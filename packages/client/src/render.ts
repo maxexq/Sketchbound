@@ -1,5 +1,5 @@
 // Draws one frame of the zone as SVG, from server snapshots. Ported from the prototype's mapDraw.
-import { rig, MOBS, rng, roadZ, inPond, type Layout, type PlayerView, type MobView, type ShotView } from '@sticky/shared';
+import { rig, MOBS, rng, roadZ, inPond, type Layout, type PlayerView, type MobView, type ShotView } from '@sketchbound/shared';
 import { figureSvg, shotArt, treeArt, swirlSvg, sparkSvg, DEFS, LNK } from './art';
 
 const R = rig as unknown as {

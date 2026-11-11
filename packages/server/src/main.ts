@@ -1,7 +1,7 @@
 // Game server: one zone (ทุ่งดินสอ), 20 ticks a second, full snapshots over WebSocket.
 // Clients only send intent (move here, attack that, use skill k); everything else is decided here.
 import { WebSocketServer, WebSocket } from 'ws';
-import { Zone, TICK_HZ, type ClientMsg, type ServerMsg } from '@sticky/shared';
+import { Zone, TICK_HZ, type ClientMsg, type ServerMsg } from '@sketchbound/shared';
 
 const PORT = Number(process.env.PORT ?? 8787);
 const zone = new Zone('pencil-field');
@@ -51,4 +51,4 @@ setInterval(() => {
   for (const ws of conns.keys()) if (ws.readyState === WebSocket.OPEN) ws.send(snap);
 }, 1000 / TICK_HZ);
 
-console.log(`Sticky World server on ws://localhost:${PORT}`);
+console.log(`Sketchbound server on ws://localhost:${PORT}`);

@@ -2,7 +2,7 @@
 // Live: Server-Sent Events push every change, including edits an AI agent makes over MCP.
 // Offline: "save to game" downloads clips.json to drop into packages/shared/src/data/.
 import type { Clip, ClipPack, Bindings } from '@sketchbound/shared';
-import { S, emit, saveLocal, syncState, openClip, sameClip } from './state';
+import { S, emit, saveLocal, syncState, openClip, sameClip, recordExternal } from './state';
 import { toast, download, h, modal } from './ui';
 
 export const WEAPONS: Record<string, string> = { none: 'มือเปล่า', katana: 'คาตานะ', great: 'ดาบยักษ์', axe: 'ขวาน', scythe: 'เคียว', spear: 'หอก', staff: 'คทา', bow: 'ธนู', gun: 'ปืน' };
@@ -32,15 +32,17 @@ export function connect() {
 /** server pack arrived: clips nobody edited here follow the server (agent edits show up live) */
 function applyServerPack(pack: ClipPack, first: boolean) {
   const prev = S.game; S.game = { v: 1, clips: pack.clips ?? {}, bindings: pack.bindings ?? {} };
-  let added = 0, updated: string[] = [];
+  let added = 0; const updated: string[] = [], conflict: string[] = [];
   for (const [id, c] of Object.entries(S.game.clips)) {
     const mine = S.lib[id];
     if (!mine) { S.lib[id] = structuredClone(c); added++; continue; }
     const wasSynced = !!prev.clips[id] && sameClip(prev.clips[id], mine);
-    if (wasSynced && !sameClip(c, mine)) { S.lib[id] = structuredClone(c); updated.push(id); }
+    if (wasSynced && !sameClip(c, mine)) { recordExternal(id, structuredClone(c), 'แก้จาก agent / ไฟล์'); updated.push(id); }
+    else if (!wasSynced && prev.clips[id] && !sameClip(prev.clips[id], c) && !sameClip(c, mine)) conflict.push(id);
   }
   if (!first) {
-    if (updated.length) toast(`อัปเดตจากเกม/agent: ${updated.map(i => S.lib[i].name).join(', ')}`, 'ok');
+    if (updated.length) toast(`อัปเดตจากเกม/agent: ${updated.map(i => S.lib[i].name).join(', ')} · Ctrl+Z เพื่อย้อน`, 'ok');
+    for (const id of conflict) toast(`agent/ไฟล์แก้ "${S.lib[id].name}" แต่คุณมีการแก้ที่ยังไม่บันทึก`, '', { label: 'ใช้ของ agent', run: () => { recordExternal(id, structuredClone(S.game.clips[id]), 'ใช้เวอร์ชันจาก agent / ไฟล์'); if (id === S.id) emit('clip', 'sel'); emit('lib', 'sync'); saveLocal(); } });
     if (added) toast(`มีท่าใหม่จากเกม/agent ${added} ท่า`, 'ok', { label: 'เปิดดู', run: () => openClip(Object.keys(S.game.clips).find(i => !prev.clips[i]) ?? S.id) });
   }
   if (updated.includes(S.id)) emit('clip', 'sel');

@@ -1,7 +1,7 @@
 // Left side: the one-shot weapon hold wizard, what the game uses now, my clips, and templates.
 import { figureSvg } from '@sketchbound/client/art';
 import { rig, templates, poseTemplates, evalClip, keyPose, poseToKeyFields, restPose, KIND_TH, HOME, EQUIP_BASE, type Pose, type Clip, type ClipKey } from '@sketchbound/shared';
-import { S, clip, emit, on, openClip, addClip, newFromTemplate, newBlank, deleteClip, syncState, applyPose, uniqueId, bindingsFor } from './state';
+import { S, clip, emit, on, openClip, addClip, newFromTemplate, newBlank, deleteClip, restoreClip, syncState, applyPose, uniqueId, bindingsFor } from './state';
 import { h, modal, menu, toast } from './ui';
 import { WEAPONS, SLOT_TH, saveToGame, removeFromGame } from './sync';
 
@@ -84,8 +84,10 @@ function libCard() {
     h('option', { value: '' }, 'ทุกชนิด'), ...Object.entries(KIND_TH).map(([k, v]) => h('option', { value: k, selected: kindF === k }, v)));
   return h('div', { class: 'card' },
     h('h3', {}, 'คลิปของฉัน', h('span', { class: 'act' }, kinds, h('button', { class: 'iconbtn', title: 'คลิปเปล่าใหม่', onclick: (e: MouseEvent) => menu(e.clientX, e.clientY, Object.entries(KIND_TH).map(([k, v]) => ({ label: 'คลิปเปล่า · ' + v, run: () => newBlank(k as Clip['kind']) }))) }, '+'))),
-    q, list);
+    q, list,
+    S.trash.length ? h('button', { class: 'iconbtn', style: 'margin-top:6px', onclick: (e: MouseEvent) => menu(e.clientX, e.clientY, S.trash.map((t, i) => ({ label: `กู้คืน "${t.clip.name}" · ${ago(t.at)}`, run: () => restoreClip(i) }))) }, `🗑 ลบล่าสุด (${S.trash.length}) · กู้คืน`) : null);
 }
+const ago = (at: number) => { const m = Math.round((Date.now() - at) / 60000); return m < 1 ? 'เมื่อกี้' : m < 60 ? `${m} นาทีก่อน` : m < 1440 ? `${Math.round(m / 60)} ชม.ก่อน` : `${Math.round(m / 1440)} วันก่อน`; };
 function clipMenu(e: MouseEvent, c: Clip) {
   menu(e.clientX, e.clientY, [
     { label: 'เปิด', run: () => openClip(c.id) },
@@ -93,10 +95,9 @@ function clipMenu(e: MouseEvent, c: Clip) {
     { label: 'บันทึกลงเกม', run: () => saveToGame(c.id) },
     ...(S.game.clips[c.id] ? [{ label: 'เอาออกจากเกม', run: () => removeFromGame(c.id) }] : []),
     '-',
-    { label: 'ลบจากคลังนี้', run: () => { if (confirmDelete(c)) deleteClip(c.id); } },
+    { label: 'ลบจากคลังนี้', run: () => { deleteClip(c.id); toast(`ลบ "${c.name}" แล้ว${S.game.clips[c.id] ? ' (ในเกมยังอยู่)' : ''}`, '', { label: 'เลิกทำ', run: () => restoreClip(0) }); } },
   ]);
 }
-const confirmDelete = (c: Clip) => window.confirm(`ลบ "${c.name}" ออกจากคลังในเบราว์เซอร์?${S.game.clips[c.id] ? '\n(ท่าที่อยู่ในเกมยังอยู่ จนกว่าจะกด "เอาออกจากเกม")' : ''}`);
 
 let tab: 'clips' | 'poses' = 'clips';
 const TCACHE = new Map<string, string>();

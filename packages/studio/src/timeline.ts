@@ -206,7 +206,7 @@ cv.addEventListener('pointerdown', e => {
   const { x, y } = pos(e); cv.focus(); S.playing = false;
   if (e.button === 2) return;
   if (y < RH && x > LBL) {
-    if (Math.abs(x - X(clipEnd(clip()))) < 8) { begin(); drag = { mode: 'len', x0: x, y0: y, x1: x, y1: y }; }
+    if (Math.abs(x - X(clipEnd(clip()))) < 8) { begin('ความยาวคลิป'); drag = { mode: 'len', x0: x, y0: y, x1: x, y1: y }; }
     else { drag = { mode: 'scrub', x0: x, y0: y, x1: x, y1: y }; setTime(e.shiftKey ? T(x) : snapT(T(x))); }
   } else if (x < LBL) {
     const r = rows().find(r => y >= r.y && y < r.y + r.h);
@@ -219,7 +219,7 @@ cv.addEventListener('pointerdown', e => {
     if (k) {
       if (e.shiftKey || e.ctrlKey || e.metaKey) { S.sel.has(k) ? S.sel.delete(k) : S.sel.add(k); }
       else if (!S.sel.has(k)) S.sel = new Set([k]);
-      begin();
+      begin(e.altKey ? 'ก๊อปคีย์' : tl.graph ? 'แก้ค่าในกราฟ' : 'ย้ายคีย์');
       if (e.altKey) { // alt-drag duplicates the selection
         const c = clip(), copies = [...S.sel].map(s => ({ ...structuredClone(s) })); c.keys.push(...copies); S.sel = new Set(copies);
       }
@@ -275,9 +275,9 @@ cv.addEventListener('contextmenu', e => {
   if (k && !S.sel.has(k)) { S.sel = new Set([k]); emit('sel'); }
   const t = snapT(T(x));
   menu(e.clientX, e.clientY, k ? [
-    ...EASES.map(es => ({ label: `easing: ${EASE_TH[es]}`, run: () => edit(() => S.sel.forEach(s => (s.e = es))) })), '-',
-    { label: 'ใส่จังหวะโดน (hit)', run: () => edit(() => S.sel.forEach(s => (s.hit ??= { t: 'high', dmg: 10, push: 16 }))) },
-    { label: 'ลบจังหวะโดน', run: () => edit(() => S.sel.forEach(s => { delete s.hit; delete s.shoot; })) },
+    ...EASES.map(es => ({ label: `easing: ${EASE_TH[es]}`, run: () => edit(() => S.sel.forEach(s => (s.e = es)), 'easing: ' + EASE_TH[es]) })), '-',
+    { label: 'ใส่จังหวะโดน (hit)', run: () => edit(() => S.sel.forEach(s => (s.hit ??= { t: 'high', dmg: 10, push: 16 })), 'ใส่จังหวะโดน') },
+    { label: 'ลบจังหวะโดน', run: () => edit(() => S.sel.forEach(s => { delete s.hit; delete s.shoot; }), 'ลบจังหวะโดน') },
     { label: 'คัดลอก', kbd: 'Ctrl+C', run: () => copyKeys() },
     { label: 'วางที่หัวอ่าน', kbd: 'Ctrl+V', run: () => pasteKeys() },
     { label: 'สลับซ้าย/ขวา', kbd: 'M', run: () => mirrorSel() }, '-',
@@ -285,7 +285,7 @@ cv.addEventListener('contextmenu', e => {
   ] : [
     { label: 'ใส่คีย์ตรงนี้', kbd: 'S', run: () => addKey(t) },
     { label: 'วางคีย์ตรงนี้', kbd: 'Ctrl+V', run: () => { setTime(t); pasteKeys(); } },
-    { label: 'ตั้งความยาวคลิปตรงนี้', run: () => edit(() => { const c = clip(); c.len = Math.max(t, ...c.keys.map(k => k.t)); }) },
+    { label: 'ตั้งความยาวคลิปตรงนี้', run: () => edit(() => { const c = clip(); c.len = Math.max(t, ...c.keys.map(k => k.t)); }, 'ความยาวคลิป') },
     { label: 'เลือกทุกคีย์', kbd: 'Ctrl+A', run: () => { S.sel = new Set(clip().keys); emit('sel'); } },
   ]);
 });

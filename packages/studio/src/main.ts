@@ -1,7 +1,7 @@
 // Pose Studio entry: wires the top bar, stage toolbar, timeline transport, shortcuts and playback.
 import { DEFS } from '@sketchbound/client/art';
 import { KIND_TH, PRESETS, presetEquip, clipEnd } from '@sketchbound/shared';
-import { S, clip, emit, on, loadLocal, saveLocal, openClip, newFromTemplate, setTime, frame, jumpKey, addKey, deleteKeys, copyKeys, pasteKeys, mirrorSel, resetBone, undo, redo, syncState, FPS_OPTS, edit } from './state';
+import { S, clip, emit, on, loadLocal, saveLocal, openClip, newFromTemplate, setTime, frame, jumpKey, addKey, deleteKeys, copyKeys, pasteKeys, mirrorSel, resetBone, undo as undo0, redo as redo0, jump, history, loadHistory, syncState, FPS_OPTS, edit } from './state';
 import { $, h, modal, modalOpen, toast } from './ui';
 import { render as renderStage, pan, opts as stageOpts } from './stage';
 import { draw as drawTl, fit, tl, onClipOpened } from './timeline';
@@ -16,7 +16,9 @@ document.body.append(Object.assign(document.createElementNS('http://www.w3.org/2
 (document.body.lastChild as SVGElement).setAttribute('style', 'position:absolute;width:0;height:0');
 
 // ---------- boot ----------
-if (!loadLocal() || !S.lib[S.id]) {
+const hadLib = loadLocal();
+loadHistory();
+if (!hadLib || !S.lib[S.id]) {
   if (!Object.keys(S.lib).length) { newFromTemplate('slash', 'ฟันเดี่ยว (ของฉัน)'); }
   else openClip(Object.keys(S.lib)[0]);
 }
@@ -75,10 +77,27 @@ function tlbar() {
     btn('📈 Graph', 'กราฟค่ากระดูกที่เลือก (G)', () => { tl.graph = !tl.graph; tlbar(); drawTl(); }, tl.graph ? 'on' : ''),
     btn('⤢ Fit', 'ซูมให้เห็นทั้งคลิป (\\)', fit),
     h('span', { class: 'grow' }),
-    btn('↶', 'Undo (Ctrl+Z)', () => undo()), btn('↷', 'Redo (Ctrl+Shift+Z)', () => redo()));
+    btn('↶', 'Undo (Ctrl+Z)', () => undo()), btn('↷', 'Redo (Ctrl+Shift+Z)', () => redo()),
+    btn('🕘 History', 'รายการขั้นตอน คลิกเพื่อย้อนไปขั้นไหนก็ได้ (H)', toggleHist, histOpen ? 'on' : ''));
 }
 on(['time'], () => { const tc = document.getElementById('tc'); if (tc) tc.textContent = fmt(S.t); });
 on(['view'], tlbar);
+
+// ---------- history ----------
+let histOpen = false, hintT = 0;
+const hint = (s: string) => { const el = $('stageHint'); el.textContent = s; el.classList.add('flash'); clearTimeout(hintT); hintT = window.setTimeout(() => { el.textContent = ''; el.classList.remove('flash'); }, 1600); };
+function undo() { const l = undo0(); hint(l ? '↶ ย้อน: ' + l : 'ไม่มีขั้นให้ย้อนแล้ว'); }
+function redo() { const l = redo0(); hint(l ? '↷ ทำซ้ำ: ' + l : 'ไม่มีขั้นให้ทำซ้ำ'); }
+function toggleHist() { histOpen = !histOpen; $('hist').hidden = !histOpen; tlbar(); renderHist(); }
+const hhmm = (at: number) => new Date(at).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+function renderHist() {
+  if (!histOpen) return;
+  const H = history(), list = $('histList');
+  list.replaceChildren(...H.s.map((st, i) => h('button', { class: 'hrow' + (i === H.i ? ' on' : i > H.i ? ' future' : ''), title: i > H.i ? 'ขั้นที่ย้อนไปแล้ว คลิกเพื่อทำซ้ำถึงตรงนี้' : 'คลิกเพื่อย้อนกลับมาที่ขั้นนี้', onclick: () => jump(i) },
+    h('span', { class: 'hn' }, String(i)), h('span', { class: 'hl' }, st.l), h('span', { class: 'ht' }, hhmm(st.at)))).reverse());
+  $('histCount').textContent = `${H.i} / ${H.s.length - 1}`;
+}
+on(['hist', 'clip'], renderHist);
 
 // ---------- playback ----------
 let last = 0;
@@ -101,7 +120,7 @@ const KEYS: [string, string][] = [
   ['Space', 'เล่น / หยุด'], ['← →', 'ทีละเฟรม (Shift = 10 เฟรม)'], ['J / K', 'คีย์ก่อนหน้า / ถัดไป'], ['Home / End', 'ต้น / ท้ายคลิป'],
   ['S', 'ใส่คีย์ที่หัวอ่าน'], ['Del', 'ลบคีย์ที่เลือก'], ['Ctrl+C / V', 'คัดลอก / วางคีย์'], ['Ctrl+A', 'เลือกทุกคีย์'],
   ['Ctrl+Z / Shift+Z', 'Undo / Redo'], ['M', 'สลับซ้าย/ขวา'], ['R', 'รีเซ็ตกระดูกที่เลือก'], ['A', 'Auto-key'],
-  ['B / O / P / F / I', 'ข้อต่อ / Onion / Root motion / Flip / IK'], ['G', 'Graph editor'], ['\\', 'ซูมไทม์ไลน์ให้พอดี'], ['Ctrl+S', 'บันทึกลงเกม'],
+  ['B / O / P / F / I', 'ข้อต่อ / Onion / Root motion / Flip / IK'], ['G', 'Graph editor'], ['H', 'แผง History'], ['\\', 'ซูมไทม์ไลน์ให้พอดี'], ['Ctrl+S', 'บันทึกลงเกม'],
   ['ลากจุด', 'หมุนกระดูก (Shift = ทีละ 15°)'], ['Ctrl+ลากมือ/เท้า', 'IK ชั่วคราว'], ['ลากสะโพก', 'ย้ายตัว (Shift = หมุนทั้งตัว)'], ['คลิกขวา/Alt+ลาก', 'เลื่อนมุมมองเวที'],
   ['ล้อเมาส์บนไทม์ไลน์', 'เลื่อนแถว (Shift = เลื่อนเวลา, Ctrl = ซูม)'], ['Alt+ลากคีย์', 'ก๊อปปี้คีย์'], ['ดับเบิลคลิกไทม์ไลน์', 'ใส่คีย์ตรงนั้น'], ['คลิกขวาที่คีย์', 'easing, hit, ลบ ฯลฯ'],
 ];
@@ -140,6 +159,7 @@ document.addEventListener('keydown', e => {
   else if (k === 'f') tog('flip');
   else if (k === 'i') tog('ik');
   else if (k === 'g') { tl.graph = !tl.graph; tlbar(); drawTl(); }
+  else if (k === 'h') toggleHist();
   else if (e.key === '\\') fit();
   else if (e.key === '?') shortcuts();
   else hit = false;

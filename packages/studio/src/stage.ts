@@ -2,7 +2,7 @@
 // bone handles into pose edits (FK rotate, IK for arms/legs, move the hips).
 import { figureSvg, DEFS } from '@sketchbound/client/art';
 import { rig, evalClip, composePose, keyPose, BMAP, HOME, type BoneId, type Pose, type ClipKey, norm } from '@sketchbound/shared';
-import { S, clip, emit, on, begin, commit, editKey, clipEnd, bindingsFor } from './state';
+import { S, clip, emit, on, begin, commit, editKey, clipEnd, bindingsFor, boneTh } from './state';
 import { toast } from './ui';
 
 const svg = document.getElementById('stage') as unknown as SVGSVGElement;
@@ -88,7 +88,7 @@ const LIMB: Partial<Record<BoneId, [BoneId, BoneId]>> = {
   armR_l: ['armR_u', 'armR_l'], handR: ['armR_u', 'armR_l'], armL_l: ['armL_u', 'armL_l'], handL: ['armL_u', 'armL_l'],
   legR_l: ['legR_u', 'legR_l'], legL_l: ['legL_u', 'legL_l'],
 };
-type Drag = { bone: BoneId; key: ClipKey; mode: 'move' | 'rot' | 'ik' | 'spin'; fx0: number; fy0: number; dx0: number; dy0: number; a0: number } | null;
+type Drag = { label: string; bone: BoneId; key: ClipKey; mode: 'move' | 'rot' | 'ik' | 'spin'; fx0: number; fy0: number; dx0: number; dy0: number; a0: number } | null;
 let drag: Drag = null, panning: { x: number; y: number; px: number; py: number } | null = null;
 
 svg.addEventListener('pointerdown', e => {
@@ -102,7 +102,8 @@ svg.addEventListener('pointerdown', e => {
   if (!key) { commit(); toast('ไม่มีคีย์ตรงนี้ · กด S เพื่อใส่คีย์ หรือเปิด Auto-key'); return; }
   const p = toFig(e);
   const ik = (S.view.ik || e.ctrlKey || e.metaKey) && LIMB[bone];
-  drag = { bone, key, mode: bone === 'root' ? (e.shiftKey ? 'spin' : 'move') : ik ? 'ik' : 'rot', fx0: p.x, fy0: p.y, dx0: key.dx, dy0: key.dy, a0: keyPose(key).a.root };
+  const mode = bone === 'root' ? (e.shiftKey ? 'spin' : 'move') : ik ? 'ik' : 'rot';
+  drag = { label: mode === 'move' ? 'ย้ายตัว' : mode === 'spin' ? 'หมุนทั้งตัว' : (mode === 'ik' ? 'IK ' : 'หมุน') + boneTh(bone), bone, key, mode, fx0: p.x, fy0: p.y, dx0: key.dx, dy0: key.dy, a0: keyPose(key).a.root };
   svg.setPointerCapture(e.pointerId); e.preventDefault();
 });
 svg.addEventListener('pointermove', e => {
@@ -119,7 +120,7 @@ svg.addEventListener('pointermove', e => {
   } else ik(k, pose, LIMB[drag.bone]!, p);
   emit('clip');
 });
-const end = (e: PointerEvent) => { if (panning) { panning = null; } if (drag) { drag = null; commit(); } try { svg.releasePointerCapture(e.pointerId); } catch { /* */ } };
+const end = (e: PointerEvent) => { if (panning) { panning = null; } if (drag) { const l = drag.label; drag = null; commit(l); } try { svg.releasePointerCapture(e.pointerId); } catch { /* */ } };
 svg.addEventListener('pointerup', end); svg.addEventListener('pointercancel', end);
 svg.addEventListener('contextmenu', e => e.preventDefault());
 svg.addEventListener('wheel', e => { e.preventDefault(); S.view.zoom = Math.max(0.4, Math.min(4, S.view.zoom * (e.deltaY < 0 ? 1.1 : 1 / 1.1))); emit('view'); }, { passive: false });

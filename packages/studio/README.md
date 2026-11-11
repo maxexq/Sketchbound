@@ -19,7 +19,8 @@ Stack: Vite + plain TypeScript + SVG, no UI framework. The build is about 110 KB
 - **Library and templates**: every built-in move, idle, walk, run, hit reaction and emote can start a new clip. Still poses can be applied to the key at the playhead. My clips live in the browser (localStorage) and show whether each one matches the game.
 - **ดูผลในเกม**: stand, walk, run and stand → attack, using what the game has bound for the weapon, with the open clip swapped in where it fits.
 - **Import/Export**: one clip, the whole library, the game's `clips.json`, a PNG sprite sheet or an SVG frame. Import also reads the old prototype's saved moves.
-- **Undo/redo**, auto-key, 24/30/60 fps snapping, and keyboard shortcuts (press `?`).
+- **History**: Ctrl+Z / Ctrl+Shift+Z, and a History panel (H) listing named steps ("หมุน ต้นแขนขวา", "ย้ายคีย์", "แก้จาก agent / ไฟล์"…) that you can click to jump to any step. A drag is one step. History is kept per clip, survives a reload, and includes edits that arrive from an AI agent or a file change, so those can be undone too. A deleted clip can be brought back from the toast or the library's "ลบล่าสุด" list.
+- Auto-key, 24/30/60 fps snapping, and keyboard shortcuts (press `?`).
 
 ## Save to game
 

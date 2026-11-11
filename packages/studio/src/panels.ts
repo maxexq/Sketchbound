@@ -1,6 +1,6 @@
 // Right side: clip settings, the key at the playhead, and a slider per bone.
 import { CLIP_KINDS, KIND_TH, EASES, EASE_TH, EASE_FN, HANDS, BMAP, CLIP_ID, restPose, evalClip, type BoneId, type ClipKey, type Ease, type Clip } from '@sketchbound/shared';
-import { S, clip, emit, on, begin, commit, edit, editKey, keyAt, setTime, round, uniqueId, saveLocal, bindingsFor, deleteKeys } from './state';
+import { S, clip, emit, on, begin, commit, edit, editKey, keyAt, setTime, round, uniqueId, saveLocal, bindingsFor, deleteKeys, boneTh, renameHistory } from './state';
 import { h, toast } from './ui';
 import { setBinding, WEAPONS, SLOT_TH } from './sync';
 
@@ -8,31 +8,31 @@ const root = document.getElementById('right')!;
 const HAND_TH: Record<string, string> = { relax: 'ผ่อนคลาย', open: 'กางนิ้ว', fist: 'กำหมัด', point: 'ชี้', peace: 'ชูสองนิ้ว', chop: 'สันมือ', claw: 'กรงเล็บ', grip: 'กำด้าม' };
 const restA = restPose().a;
 const opt = (v: string, label: string, sel: boolean) => h('option', { value: v, selected: sel }, label);
-const num = (v: number, step: number, onInput: (v: number) => void, attrs = {}) => {
+const num = (v: number, step: number, onInput: (v: number) => void, attrs = {}, label = 'แก้ค่า') => {
   const i = h('input', { type: 'number', value: String(v), step: String(step), ...attrs }) as HTMLInputElement;
-  i.addEventListener('focus', () => begin()); i.addEventListener('input', () => { if (i.value !== '' && Number.isFinite(+i.value)) { begin(); onInput(+i.value); } });
+  i.addEventListener('focus', () => begin(label)); i.addEventListener('input', () => { if (i.value !== '' && Number.isFinite(+i.value)) { begin(label); onInput(+i.value); } });
   i.addEventListener('change', () => commit()); i.addEventListener('blur', () => commit());
   return i;
 };
-const chk = (label: string, v: boolean, set: (v: boolean) => void, title = '') => h('label', { class: 'chk', title }, h('input', { type: 'checkbox', checked: v, onchange: (e: Event) => edit(() => set((e.target as HTMLInputElement).checked)) }), label);
+const chk = (label: string, v: boolean, set: (v: boolean) => void, title = '') => h('label', { class: 'chk', title }, h('input', { type: 'checkbox', checked: v, onchange: (e: Event) => edit(() => set((e.target as HTMLInputElement).checked), label) }), label);
 
 // ---------- clip card ----------
 function clipCard(c: Clip) {
   const name = h('input', { type: 'text', value: c.name, maxlength: 40 }) as HTMLInputElement;
-  name.addEventListener('focus', begin); name.addEventListener('input', () => { c.name = name.value || c.id; emit('lib'); }); name.addEventListener('change', commit);
+  name.addEventListener('focus', () => begin('เปลี่ยนชื่อ')); name.addEventListener('input', () => { c.name = name.value || c.id; emit('lib'); }); name.addEventListener('change', () => commit());
   const id = h('input', { type: 'text', value: c.id, title: 'id ที่เกมใช้เรียกท่านี้ (ตั้งเป็น id ของท่าเดิม เช่น slash เพื่อแทนท่านั้นในเกม)' }) as HTMLInputElement;
   id.addEventListener('change', () => {
     const v = id.value.trim(); if (v === c.id) return;
     if (!CLIP_ID.test(v)) { toast('id ใช้ได้แค่ a-z 0-9 _ - และขึ้นต้นด้วยตัวอักษร', 'err'); id.value = c.id; return; }
     if (S.lib[v]) { toast(`มีคลิป ${v} อยู่แล้ว`, 'err'); id.value = c.id; return; }
-    delete S.lib[c.id]; c.id = v; S.lib[v] = c; S.id = v; saveLocal(); emit('lib', 'clip'); build();
+    delete S.lib[c.id]; renameHistory(c.id, v); c.id = v; S.lib[v] = c; S.id = v; saveLocal(); emit('lib', 'clip'); build();
   });
-  const kind = h('select', { onchange: (e: Event) => edit(() => { c.kind = (e.target as HTMLSelectElement).value as Clip['kind']; if (c.kind === 'hold') c.mask = 'upper'; if (['idle', 'walk', 'run'].includes(c.kind)) c.loop = true; build(); }) },
+  const kind = h('select', { onchange: (e: Event) => edit(() => { c.kind = (e.target as HTMLSelectElement).value as Clip['kind']; if (c.kind === 'hold') c.mask = 'upper'; if (['idle', 'walk', 'run'].includes(c.kind)) c.loop = true; build(); }, 'ชนิดคลิป') },
     ...CLIP_KINDS.map(k => opt(k, KIND_TH[k], c.kind === k)));
-  const weapon = h('select', { onchange: (e: Event) => edit(() => { c.weapon = (e.target as HTMLSelectElement).value; if (c.weapon !== 'any') { S.eq.weapon = c.weapon; emit('eq'); } }) },
+  const weapon = h('select', { onchange: (e: Event) => edit(() => { c.weapon = (e.target as HTMLSelectElement).value; if (c.weapon !== 'any') { S.eq.weapon = c.weapon; emit('eq'); } }, 'อาวุธของคลิป') },
     opt('any', 'ทุกอาวุธ', (c.weapon ?? 'any') === 'any'), ...Object.entries(WEAPONS).map(([k, v]) => opt(k, v, c.weapon === k)));
   const drag = h('input', { type: 'range', min: '0', max: '0.5', step: '0.05', value: String(c.drag ?? 0.2), title: 'ปลายแขนขาขยับตามช้ากว่าต้นนิดหน่อย ให้ท่าดูสะบัด' }) as HTMLInputElement;
-  drag.addEventListener('pointerdown', begin); drag.addEventListener('input', () => { begin(); c.drag = +drag.value; emit('clip'); }); drag.addEventListener('change', commit);
+  drag.addEventListener('pointerdown', () => begin('สะบัดตาม')); drag.addEventListener('input', () => { begin('สะบัดตาม'); c.drag = +drag.value; emit('clip'); }); drag.addEventListener('change', () => commit());
   const b = bindingsFor(c.weapon && c.weapon !== 'any' ? c.weapon : S.eq.weapon), used = Object.entries(b).filter(([, v]) => v === c.id || (Array.isArray(v) && v.includes(c.id))).map(([k]) => SLOT_TH[k] ?? k);
   const slot = h('select', {}, ...Object.entries(SLOT_TH).map(([k, v]) => opt(k, v, defaultSlot(c) === k)));
   const w = c.weapon && c.weapon !== 'any' ? c.weapon : S.eq.weapon;
@@ -43,9 +43,9 @@ function clipCard(c: Clip) {
       h('label', {}, 'id ในเกม'), id,
       h('label', {}, 'ชนิด'), kind,
       h('label', {}, 'อาวุธ'), weapon,
-      h('label', {}, 'ความยาว (วิ)'), num(c.len, 0.05, v => { c.len = Math.max(round(v), ...c.keys.map(k => k.t), 0.05); emit('clip'); }, { min: '0.05' }),
-      h('label', {}, 'ความเร็วในเกม'), num(c.rate ?? 1, 0.1, v => { c.rate = Math.max(0.1, v); emit('clip'); }, { min: '0.1' }),
-      h('label', { title: 'ระยะที่ตัวละครเคลื่อนที่จริง (px) ต่อการเล่น 1 รอบ' }, 'Root motion'), num(c.rootMotion ?? 0, 1, v => { c.rootMotion = v; emit('clip'); }),
+      h('label', {}, 'ความยาว (วิ)'), num(c.len, 0.05, v => { c.len = Math.max(round(v), ...c.keys.map(k => k.t), 0.05); emit('clip'); }, { min: '0.05' }, 'ความยาวคลิป'),
+      h('label', {}, 'ความเร็วในเกม'), num(c.rate ?? 1, 0.1, v => { c.rate = Math.max(0.1, v); emit('clip'); }, { min: '0.1' }, 'ความเร็วในเกม'),
+      h('label', { title: 'ระยะที่ตัวละครเคลื่อนที่จริง (px) ต่อการเล่น 1 รอบ' }, 'Root motion'), num(c.rootMotion ?? 0, 1, v => { c.rootMotion = v; emit('clip'); }, {}, 'Root motion'),
       h('label', {}, 'สะบัดตาม'), drag,
       h('div', { class: 'full' }, chk('เล่นวน (loop)', c.loop, v => (c.loop = v))),
       h('div', { class: 'full' }, chk('แขน + อาวุธหมุนตามทิศที่เล็ง', !!c.aim, v => (c.aim = v), 'ในเกม แขนหน้าจะหมุนตามเป้าหมาย')),
@@ -74,7 +74,7 @@ function keyCard(c: Clip) {
   if (!k) return h('div', { class: 'card' }, h('h3', {}, 'Keyframe'),
     h('div', { class: 'note' }, 'หัวอ่านไม่ได้อยู่บนคีย์ ', S.view.autoKey ? 'ลากกระดูกหรือขยับสไลเดอร์เพื่อสร้างคีย์อัตโนมัติ หรือ ' : '', h('button', { class: 'iconbtn', onclick: () => edit(() => { editKey(); }) }, '+ ใส่คีย์ (S)')));
   const i = c.keys.indexOf(k);
-  const set = (fn: (k: ClipKey) => void) => edit(() => { fn(k); build(); });
+  const set = (fn: (k: ClipKey) => void, l = 'แก้คีย์') => edit(() => { fn(k); build(); }, l);
   const hitOn = !!k.hit;
   const hit = k.hit ?? { t: 'high' as const, dmg: 10, push: 16 };
   return h('div', { class: 'card' },
@@ -83,14 +83,14 @@ function keyCard(c: Clip) {
       h('button', { class: 'iconbtn', title: 'คีย์ถัดไป (K)', onclick: () => c.keys[i + 1] && (setTime(c.keys[i + 1].t), (S.sel = new Set([c.keys[i + 1]])), emit('sel')) }, '›'),
       h('button', { class: 'iconbtn', title: 'ลบคีย์ (Del)', onclick: () => deleteKeys([k]) }, '🗑'))),
     h('div', { class: 'f' },
-      h('label', {}, 'เวลา (วิ)'), num(k.t, 1 / S.fps, v => { k.t = round(Math.max(0, v)); c.len = Math.max(c.len, k.t); setTime(k.t); emit('clip'); }, { min: '0' }),
+      h('label', {}, 'เวลา (วิ)'), num(k.t, 1 / S.fps, v => { k.t = round(Math.max(0, v)); c.len = Math.max(c.len, k.t); setTime(k.t); emit('clip'); }, { min: '0' }, 'เวลาคีย์'),
       h('label', {}, 'เข้าหาคีย์แบบ'), h('select', { onchange: (e: Event) => set(k => (k.e = (e.target as HTMLSelectElement).value as Ease)) }, ...EASES.map(es => opt(es, EASE_TH[es], k.e === es))),
       h('div', { class: 'full' }, easeCurve(k.e)),
       h('label', {}, 'มือ'), h('select', { onchange: (e: Event) => set(k => (k.h = (e.target as HTMLSelectElement).value as ClipKey['h'])) }, ...HANDS.map(x => opt(x, HAND_TH[x], (k.h ?? 'relax') === x))),
       h('div', { class: 'full' }, chk('จังหวะโดน (hit) ที่คีย์นี้', hitOn, v => { if (v) k.hit = { ...hit }; else delete k.hit; build(); })),
       ...(hitOn ? [
         h('label', {}, 'ตำแหน่ง'), h('select', { onchange: (e: Event) => set(k => (k.hit!.t = (e.target as HTMLSelectElement).value as 'high')) }, opt('high', 'บน', hit.t === 'high'), opt('low', 'ล่าง/ท้อง', hit.t === 'low'), opt('launch', 'ลอยล้ม', hit.t === 'launch')),
-        h('label', {}, 'ดาเมจ / ผลัก'), h('div', { class: 'pair' }, num(hit.dmg, 1, v => { k.hit!.dmg = v; emit('clip'); }), num(hit.push, 1, v => { k.hit!.push = v; emit('clip'); })),
+        h('label', {}, 'ดาเมจ / ผลัก'), h('div', { class: 'pair' }, num(hit.dmg, 1, v => { k.hit!.dmg = v; emit('clip'); }, {}, 'ดาเมจ'), num(hit.push, 1, v => { k.hit!.push = v; emit('clip'); }, {}, 'แรงผลัก')),
         h('div', { class: 'full' }, chk('เป็นเตะ/หมัด (เสียงต่าง)', !!hit.kick, v => { k.hit!.kick = v || undefined; })),
       ] : []),
       h('label', {}, 'ยิงออกไป'), h('select', { onchange: (e: Event) => set(k => { const v = (e.target as HTMLSelectElement).value; if (v === 'none') delete k.shoot; else k.shoot = { kind: v as 'arrow', hit: k.shoot?.hit ?? { t: 'high', dmg: 8, push: 10 } }; }) },
@@ -119,11 +119,11 @@ function bonesCard() {
       const range = h('input', { type: 'range', min: String(it.min), max: String(it.max), step: '0.5' }) as HTMLInputElement;
       const box = h('input', { type: 'number', step: '1' }) as HTMLInputElement;
       const lab = h('label', { onclick: () => { if (it.id !== 'dx' && it.id !== 'dy') { S.bone = it.id; emit('sel'); } } }, it.th);
-      const apply = (v: number) => { begin(); const k = editKey(); if (!k) return; if (it.id === 'dx') k.dx = v; else if (it.id === 'dy') k.dy = v; else k.a[it.id] = Math.round((restA[it.id] + v) * 10) / 10; if (it.id !== 'dx' && it.id !== 'dy') S.bone = it.id; emit('clip'); };
+      const apply = (v: number) => { begin(boneTh(it.id)); const k = editKey(); if (!k) return; if (it.id === 'dx') k.dx = v; else if (it.id === 'dy') k.dy = v; else k.a[it.id] = Math.round((restA[it.id] + v) * 10) / 10; if (it.id !== 'dx' && it.id !== 'dy') S.bone = it.id; emit('clip'); };
       range.addEventListener('input', () => { box.value = String(Math.round(+range.value)); apply(+range.value); });
-      range.addEventListener('change', commit);
+      range.addEventListener('change', () => commit());
       box.addEventListener('input', () => { if (box.value !== '' && Number.isFinite(+box.value)) { range.value = box.value; apply(+box.value); } });
-      box.addEventListener('change', commit);
+      box.addEventListener('change', () => commit());
       const row = h('div', { class: 'sl' }, lab, range, box); grp.append(row); sliders.push({ it, range, box, lab, row });
     }
     card.append(grp);

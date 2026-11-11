@@ -1,7 +1,7 @@
 // App state, the edit operations on the open clip, undo/redo and the change bus.
 import {
   type Clip, type ClipKey, type BoneId, type Pose, type ClipPack, type Bindings,
-  evalClip, keyPose, poseToKeyFields, sortKeys, clipEnd, mirrorKey, restPose, templateById, EQUIP_BASE,
+  evalClip, keyPose, poseToKeyFields, sortKeys, clipEnd, mirrorKey, restPose, templateById, EQUIP_BASE, BMAP,
 } from '@sketchbound/shared';
 
 export type Equip = Record<string, string>;
@@ -19,11 +19,12 @@ export const S = {
   eq: { ...EQUIP_BASE, weapon: 'katana' } as Equip,
   preset: '',
   online: false,
+  trash: [] as { clip: Clip; hist?: { s: HState[]; i: number }; at: number }[],
 };
 export const clip = (): Clip => S.lib[S.id];
 
 // ---- change bus: parts of the UI redraw on the topics they care about ----
-type Topic = 'clip' | 'time' | 'sel' | 'lib' | 'view' | 'sync' | 'eq';
+type Topic = 'clip' | 'time' | 'sel' | 'lib' | 'view' | 'sync' | 'eq' | 'hist';
 const subs: Record<string, (() => void)[]> = {};
 export const on = (topics: Topic[], fn: () => void) => topics.forEach(t => (subs[t] ??= []).push(fn));
 let pending = new Set<Topic>(), raf = 0;
@@ -38,41 +39,95 @@ export function emit(...topics: Topic[]) {
 // ---- persistence of my clips in this browser ----
 const LS = 'sketchbound.studio.v1';
 export function saveLocal() {
-  try { localStorage.setItem(LS, JSON.stringify({ lib: S.lib, id: S.id, eq: S.eq, view: S.view, fps: S.fps, game: S.game })); } catch { /* private mode */ }
+  try { localStorage.setItem(LS, JSON.stringify({ lib: S.lib, id: S.id, eq: S.eq, view: S.view, fps: S.fps, game: S.game, trash: S.trash.map(t => ({ clip: t.clip, at: t.at })) })); } catch { /* private mode */ }
 }
 export function loadLocal() {
   try {
     const d = JSON.parse(localStorage.getItem(LS) || 'null'); if (!d) return false;
     S.lib = d.lib ?? {}; S.id = d.id ?? ''; Object.assign(S.eq, d.eq ?? {}); Object.assign(S.view, d.view ?? {}); S.fps = d.fps ?? 30;
     if (d.game) S.game = d.game;
+    if (Array.isArray(d.trash)) S.trash = d.trash;
     return Object.keys(S.lib).length > 0;
   } catch { return false; }
 }
 let saveT = 0;
 const saveSoon = () => { clearTimeout(saveT); saveT = window.setTimeout(saveLocal, 300); };
 
-// ---- undo / redo (per clip, snapshot based) ----
-const hist: Record<string, { u: string[]; r: string[] }> = {};
-const H = () => (hist[S.id] ??= { u: [], r: [] });
-let before: string | null = null;
-/** call before a change starts (pointerdown, first slider input) */
-export function begin() { if (before === null) before = JSON.stringify(clip()); }
-/** call when the change is done; records one undo step if anything changed */
-export function commit() {
+// ---- history: per clip, a list of named states (undo/redo, History panel, survives reload) ----
+export interface HState { l: string; j: string; at: number }
+const hist: Record<string, { s: HState[]; i: number }> = {};
+const HLS = 'sketchbound.history.v1', HMAX = 200, HKEEP = 60;
+const js = (c: Clip) => JSON.stringify({ ...c, updated: undefined });
+const H = (id = S.id, base?: string) => (hist[id] ??= { s: [{ l: 'เปิดคลิป', j: base ?? js(S.lib[id]), at: Date.now() }], i: 0 });
+function push(id: string, l: string, j: string, base: string) {
+  const h = H(id, base);
+  h.s.length = h.i + 1;
+  if (h.s[h.i].j !== base) { h.s.push({ l: 'แก้ไข (ไม่ได้บันทึกประวัติ)', j: base, at: Date.now() }); }
+  h.s.push({ l, j, at: Date.now() });
+  while (h.s.length > HMAX) h.s.shift();
+  h.i = h.s.length - 1; saveHistSoon(); emit('hist');
+}
+let before: string | null = null, label = '';
+/** call before a change starts (pointerdown, first slider input); the label names the step in History */
+export function begin(l?: string) { if (before === null) { before = js(clip()); label = l ?? ''; } else if (l && !label) label = l; }
+export function label_(l: string) { if (before !== null && !label) label = l; }
+/** call when the change is done; records one step if anything changed */
+export function commit(l?: string) {
   if (before === null) return;
-  const now = JSON.stringify(clip());
-  if (now !== before) { const h = H(); h.u.push(before); if (h.u.length > 200) h.u.shift(); h.r = []; clip().updated = undefined; }
-  before = null; saveSoon(); emit('clip', 'lib');
+  const now = js(clip());
+  if (now !== before) push(S.id, l || label || 'แก้ไข', now, before);
+  before = null; label = ''; saveSoon(); emit('clip', 'lib');
 }
 /** one-shot change: snapshot, run, commit */
-export function edit(fn: () => void) { begin(); fn(); sortKeys(clip()); commit(); emit('clip', 'sel'); }
+export function edit(fn: () => void, l?: string) { begin(l); fn(); sortKeys(clip()); commit(); emit('clip', 'sel'); }
 function restore(json: string) {
   const c = JSON.parse(json) as Clip; S.lib[S.id] = c;
   const ts = new Set([...S.sel].map(k => k.t)); S.sel = new Set(c.keys.filter(k => ts.has(k.t)));
-  saveSoon(); emit('clip', 'sel', 'lib');
+  saveSoon(); saveHistSoon(); emit('clip', 'sel', 'lib', 'hist');
 }
-export function undo() { const h = H(), p = h.u.pop(); if (!p) return false; h.r.push(JSON.stringify(clip())); restore(p); return true; }
-export function redo() { const h = H(), p = h.r.pop(); if (!p) return false; h.u.push(JSON.stringify(clip())); restore(p); return true; }
+export function jump(i: number) {
+  const h = H(); if (i < 0 || i >= h.s.length || i === h.i) return false;
+  if (before !== null) commit();
+  h.i = i; restore(h.s[i].j); return true;
+}
+export function undo() { const h = H(), l = h.s[h.i]?.l; return jump(h.i - 1) ? l : false; }
+export function redo() { const h = H(); return jump(h.i + 1) ? h.s[h.i].l : false; }
+export const history = () => H();
+/** a change that came from outside (an agent over MCP, a file edit): keep it undoable */
+export function recordExternal(id: string, next: Clip, l: string) {
+  const base = js(S.lib[id]); S.lib[id] = next; push(id, l, js(next), base);
+}
+export function renameHistory(from: string, to: string) { if (hist[from]) { hist[to] = hist[from]; delete hist[from]; saveHistSoon(); } }
+
+let hT = 0;
+const saveHistSoon = () => { clearTimeout(hT); hT = window.setTimeout(saveHist, 800); };
+addEventListener('pagehide', () => { saveLocal(); saveHist(); });
+addEventListener('visibilitychange', () => { if (document.hidden) { saveLocal(); saveHist(); } });
+function saveHist() {
+  for (const keep of [HKEEP, 15, 3]) {
+    const out: Record<string, { s: HState[]; i: number }> = {};
+    for (const [id, h] of Object.entries(hist)) {
+      if (!S.lib[id]) continue;
+      const from = Math.max(0, h.s.length - keep);
+      out[id] = { s: h.s.slice(from), i: Math.max(0, h.i - from) };
+    }
+    try { localStorage.setItem(HLS, JSON.stringify(out)); return; } catch { /* too big: keep fewer steps */ }
+  }
+}
+export function loadHistory() {
+  try { const d = JSON.parse(localStorage.getItem(HLS) || '{}'); for (const [id, h] of Object.entries(d as typeof hist)) if (S.lib[id] && h.s?.length) {
+    // the saved clip may have changed after the last saved step; then that is a new step
+    hist[id] = h; const cur = js(S.lib[id]); if (h.s[h.i]?.j !== cur) { h.s.length = h.i + 1; h.s.push({ l: 'แก้ไข', j: cur, at: Date.now() }); h.i++; }
+  } } catch { /* */ }
+}
+
+// ---- deleted clips can come back ----
+export function restoreClip(i: number) {
+  const t = S.trash.splice(i, 1)[0]; if (!t) return;
+  const c = t.clip; if (S.lib[c.id]) c.id = uniqueId(c.id);
+  S.lib[c.id] = c; if (t.hist) hist[c.id] = t.hist;
+  openClip(c.id); saveSoon(); emit('lib');
+}
 
 // ---- time & keys ----
 export const frame = () => 1 / S.fps;
@@ -93,15 +148,17 @@ export function editKey(): ClipKey | null {
   S.sel = new Set([k]); return k;
 }
 export const round = (v: number) => Math.round(v * 1000) / 1000;
+export const fmtT = (t: number) => `${Math.round(t * S.fps)}f`;
+export const boneTh = (id: string) => (id === 'dx' ? 'ตัว ซ้าย/ขวา' : id === 'dy' ? 'ตัว ขึ้น/ลง' : (BMAP as Record<string, { th: string }>)[id]?.th ?? id);
 export const poseNow = (): Pose => evalClip(clip(), S.t).pose;
 
 export function addKey(t = S.t) {
-  edit(() => { const c = clip(); let k = keyAt(t); if (!k) { k = { t: round(snapT(t)), e: 'io', ...poseToKeyFields(evalClip(c, t).pose), h: evalClip(c, t).hand }; c.keys.push(k); c.len = Math.max(c.len, k.t); } S.sel = new Set([k]); });
+  edit(() => { const c = clip(); let k = keyAt(t); if (!k) { k = { t: round(snapT(t)), e: 'io', ...poseToKeyFields(evalClip(c, t).pose), h: evalClip(c, t).hand }; c.keys.push(k); c.len = Math.max(c.len, k.t); } S.sel = new Set([k]); }, `ใส่คีย์ ${fmtT(t)}`);
 }
 export function deleteKeys(keys = [...S.sel]) {
   const c = clip(); if (!keys.length) return;
   if (keys.length >= c.keys.length) keys = keys.slice(1); // a clip keeps at least one key
-  edit(() => { c.keys = c.keys.filter(k => !keys.includes(k)); S.sel.clear(); });
+  edit(() => { c.keys = c.keys.filter(k => !keys.includes(k)); S.sel.clear(); }, `ลบ ${keys.length} คีย์`);
 }
 let clipboard: ClipKey[] = [];
 export function copyKeys() { const ks = [...S.sel].sort((a, b) => a.t - b.t); if (!ks.length) { const k = keyAt(S.t); if (k) ks.push(k); } clipboard = structuredClone(ks); return clipboard.length; }
@@ -116,17 +173,17 @@ export function pasteKeys() {
       c.keys.push(k); added.push(k); c.len = Math.max(c.len, t);
     }
     S.sel = new Set(added);
-  });
+  }, `วาง ${clipboard.length} คีย์`);
   return clipboard.length;
 }
 export function mirrorSel() {
-  edit(() => { const c = clip(), ks = S.sel.size ? [...S.sel] : [editKey()].filter(Boolean) as ClipKey[]; for (const k of ks) { const m = mirrorKey(k); k.a = m.a; } void c; });
+  edit(() => { const c = clip(), ks = S.sel.size ? [...S.sel] : [editKey()].filter(Boolean) as ClipKey[]; for (const k of ks) { const m = mirrorKey(k); k.a = m.a; } void c; }, 'สลับซ้าย/ขวา');
 }
 export function resetBone(id = S.bone) {
-  edit(() => { const k = editKey(); if (k) k.a[id] = restPose().a[id]; });
+  edit(() => { const k = editKey(); if (k) k.a[id] = restPose().a[id]; }, 'รีเซ็ต ' + boneTh(id));
 }
 export function applyPose(fields: Pick<ClipKey, 'dx' | 'dy' | 'a'>, hand?: string) {
-  edit(() => { const k = editKey(); if (!k) return; k.dx = fields.dx; k.dy = fields.dy; k.a = { ...fields.a }; if (hand) k.h = hand as ClipKey['h']; });
+  edit(() => { const k = editKey(); if (!k) return; k.dx = fields.dx; k.dy = fields.dy; k.a = { ...fields.a }; if (hand) k.h = hand as ClipKey['h']; }, 'ใส่ท่านิ่ง');
 }
 export function selectKeysInRange(t0: number, t1: number, add = false) {
   if (!add) S.sel.clear();
@@ -164,6 +221,7 @@ export function newBlank(kind: Clip['kind'] = 'attack') {
   return addClip(c);
 }
 export function deleteClip(id: string) {
+  S.trash.unshift({ clip: S.lib[id], hist: hist[id], at: Date.now() }); S.trash.length = Math.min(S.trash.length, 15);
   delete S.lib[id]; delete hist[id];
   if (S.id === id) { const first = Object.keys(S.lib)[0]; if (first) openClip(first); else newFromTemplate('slash', 'ฟันเดี่ยว (ของฉัน)'); }
   saveSoon(); emit('lib');

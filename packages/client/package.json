@@ -1,0 +1,8 @@
+{
+  "name": "@sticky/client",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": { "dev": "vite", "build": "vite build" },
+  "dependencies": { "@sticky/shared": "0.0.1" }
+}

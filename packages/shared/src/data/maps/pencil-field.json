@@ -1,0 +1,14 @@
+{
+  "id": "pencil-field",
+  "th": "ทุ่งดินสอ",
+  "width": 1500,
+  "depth": 1100,
+  "seed": 11,
+  "start": {"x": 200},
+  "road": [[-40,560],[400,520],[760,600],[1100,480],[1540,520]],
+  "pond": {"x":1060,"z":840,"rx":150,"rz":92},
+  "trees": 26,
+  "rocks": 18,
+  "mobs": {"count": 17, "cycle": ["scrib","scrib","scrib","blot","blot","eraser"], "minDistFromStart": 220, "respawnSeconds": 7},
+  "portals": [{"x":1440,"toX":150},{"x":60,"toX":1350}]
+}

@@ -1,0 +1,9 @@
+{
+  "note": "attack names (th), which attacks each weapon type can use (first = normal attack), SP cost of skills, and how far ranged weapons shoot",
+  "attacks": {"slash":"ฟันเดี่ยว","combo":"สามจังหวะ","flurry":"แทงรัว","kick":"เตะคู่","flip":"ตีลังกาฟัน","rise":"เสยแล้วทุบ","thrust":"แทง","punch":"หมัดคู่","shoot":"ยิงธนู","volley":"ยิงสามดอก","backshot":"ถอยยิง","fire":"ยิงปืน","rapid":"ยิงรัว","cast":"ยิงเวท","burst":"ระเบิดเวท"},
+  "byWeaponType": {"blade":["slash","combo","flip","rise","kick"],"pole":["thrust","flurry","flip","kick"],"fist":["punch","kick","flip"],"bow":["shoot","volley","backshot"],"gun":["fire","rapid"],"magic":["cast","burst"]},
+  "spCost": {"combo":8,"flurry":8,"flip":12,"rise":12,"kick":5,"volley":9,"backshot":7,"rapid":9,"burst":14},
+  "rangedReach": {"bow":205,"gun":185,"magic":170},
+  "aoe": ["flip"],
+  "playbackRate": {"slash":1.9,"normal":1.6,"skill":1.45}
+}

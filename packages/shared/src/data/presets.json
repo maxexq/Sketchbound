@@ -1,0 +1,12 @@
+{
+  "base": {"hair":"none","outfit":"none","wings":"none","weapon":"none","offhand":"none","element":"mono","handR":"auto","handL":"auto","head":"solid","eyes":"on"},
+  "presets": {
+    "knight": {"th":"อัศวิน","eq":{"hair":"spiky","outfit":"armor","weapon":"spear","offhand":"shield"}},
+    "samurai": {"th":"ซามูไร","eq":{"hair":"pony","outfit":"ninja","weapon":"katana","offhand":"dagger"}},
+    "mage": {"th":"นักเวท","eq":{"hair":"long","outfit":"robe","wings":"fairy","weapon":"staff","element":"ice"}},
+    "archer": {"th":"นักธนู","eq":{"hair":"pony","outfit":"scarf","weapon":"bow"}},
+    "gunner": {"th":"มือปืน","eq":{"hair":"spiky","outfit":"cape","weapon":"gun"}},
+    "ronin": {"th":"โรนิน","eq":{"hair":"kasa","outfit":"scarf","weapon":"katana"}},
+    "reaper": {"th":"ยมทูต","eq":{"outfit":"cape","wings":"bat","weapon":"scythe"}}
+  }
+}

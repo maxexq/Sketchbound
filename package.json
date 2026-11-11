@@ -1,0 +1,23 @@
+{
+  "name": "sticky-world",
+  "private": true,
+  "type": "module",
+  "workspaces": ["packages/*"],
+  "scripts": {
+    "dev": "npm run dev -w @sticky/server & npm run dev -w @sticky/client",
+    "dev:server": "npm run dev -w @sticky/server",
+    "dev:client": "npm run dev -w @sticky/client",
+    "build": "npm run build -w @sticky/client",
+    "start": "npm run start -w @sticky/server",
+    "test": "vitest run",
+    "typecheck": "tsc -p packages/shared && tsc -p packages/server && tsc -p packages/client"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/ws": "^8.5.13",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.5",
+    "vitest": "^2.1.8"
+  }
+}

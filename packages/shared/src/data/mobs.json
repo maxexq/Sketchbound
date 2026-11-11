@@ -1,0 +1,5 @@
+{
+  "scrib": {"th":"ขยุกขยิก","hp":26,"exp":8,"atk":[2,5],"speed":40,"height":24},
+  "blot": {"th":"หยดหมึก","hp":44,"exp":14,"atk":[4,8],"speed":54,"height":28},
+  "eraser": {"th":"ยางลบยักษ์","hp":95,"exp":34,"atk":[6,10],"speed":30,"height":38}
+}

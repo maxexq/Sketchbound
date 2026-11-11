@@ -1,0 +1,1511 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stickman Bone Rig</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Mali:wght@500;700&family=IBM+Plex+Sans+Thai:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* layout: marker-on-paper stage on the left, control desk on the right; stacks on phones */
+:root{
+  --bg:#dcdfe3; --panel:#f5f6f8; --line:#c3c8cf; --text:#16181b; --muted:#59606a;
+  --accent:#e2521a; --accent-ink:#ffffff; --paper:#ededee; --bone:#1f6feb;
+  --display:"Mali","IBM Plex Sans Thai","Leelawadee UI","Thonburi",sans-serif;
+  --body:"IBM Plex Sans Thai","Leelawadee UI","Thonburi",system-ui,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#131518; --panel:#1d2024; --line:#363b43; --text:#eceef1; --muted:#9ba2ad;
+    --accent:#ff7a3d; --accent-ink:#1c0d04; --bone:#5b9dff; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#131518; --panel:#1d2024; --line:#363b43; --text:#eceef1; --muted:#9ba2ad;
+  --accent:#ff7a3d; --accent-ink:#1c0d04; --bone:#5b9dff; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--text);font-family:var(--body);font-size:15px;line-height:1.5}
+.wrap{max-width:1180px;margin:0 auto;padding:20px 16px 32px;display:flex;flex-direction:column;gap:16px}
+header{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 16px}
+h1{font-family:var(--display);font-weight:700;font-size:26px;margin:0;text-wrap:balance}
+header p{margin:0;color:var(--muted)}
+.cols{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(300px,400px);gap:16px;align-items:start}
+@media (max-width:860px){.cols{grid-template-columns:minmax(0,1fr)}}
+.stage{display:flex;flex-direction:column;gap:10px;position:sticky;top:12px}
+@media (max-width:860px){.stage{position:static}}
+.paper{background:var(--paper);border-radius:6px;box-shadow:0 1px 0 #fff inset,0 8px 24px rgba(0,0,0,.18);overflow:hidden}
+#svg{display:block;width:100%;height:auto;aspect-ratio:330/256;touch-action:none;user-select:none;-webkit-user-select:none}
+#svg [data-bone]{cursor:grab}
+.bar{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center}
+.grp{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.lbl{font-size:12.5px;color:var(--muted);font-weight:500;margin-right:2px}
+button{font:inherit;color:inherit}
+.chip{border:1.5px solid var(--line);background:var(--panel);border-radius:999px;padding:4px 12px;cursor:pointer;line-height:1.4}
+.chip:hover{border-color:var(--text)}
+.chip[aria-pressed="true"]{background:var(--text);color:var(--panel);border-color:var(--text)}
+.chip.go{border-color:var(--accent);color:var(--accent);font-weight:600}
+.chip.go[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+[hidden]{display:none !important}
+#svg text{font-family:var(--body)}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2.5px solid var(--bone);outline-offset:2px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:14px}
+.panel h2{font-family:var(--display);font-size:17px;font-weight:700;margin:0}
+.sec{display:flex;flex-direction:column;gap:8px}
+.sec + .sec{border-top:1px dashed var(--line);padding-top:14px}
+.row{display:grid;grid-template-columns:64px minmax(0,1fr);gap:8px;align-items:start}
+.row .lbl{padding-top:5px}
+.bones{display:flex;flex-direction:column;gap:3px}
+.bones button{text-align:left;border:1px solid transparent;background:none;border-radius:6px;padding:3px 8px;cursor:pointer;display:flex;justify-content:space-between;gap:8px}
+.bones button:hover{border-color:var(--line)}
+.bones button[aria-pressed="true"]{background:color-mix(in srgb,var(--accent) 16%,transparent);border-color:var(--accent)}
+.bones code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.ang{display:grid;grid-template-columns:minmax(0,1fr) 58px;gap:10px;align-items:center}
+.ang output{font-variant-numeric:tabular-nums;text-align:right;font-weight:600}
+input[type=range]{width:100%;accent-color:var(--accent)}
+textarea{width:100%;height:150px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:6px;padding:8px;resize:vertical}
+.hint{color:var(--muted);font-size:13px;margin:0}
+/* Pose Studio: keyframe timeline under the stage */
+.studio-on .stage{position:static}
+.studio{display:flex;flex-direction:column;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.studio h2{font-family:var(--display);font-size:16px;font-weight:700;margin:0}
+.tl{position:relative;height:54px;background:var(--bg);border:1px solid var(--line);border-radius:8px;cursor:pointer;touch-action:none;user-select:none;-webkit-user-select:none}
+.tl-axis{position:absolute;left:16px;right:16px;top:27px;height:2px;background:var(--line)}
+.tl-seg{position:absolute;top:26px;height:4px;border-radius:2px;background:color-mix(in srgb,var(--text) 22%,transparent)}
+.tl-seg.out{background:color-mix(in srgb,var(--accent) 45%,transparent)}
+.tl-seg.lin{background:repeating-linear-gradient(90deg,color-mix(in srgb,var(--text) 30%,transparent) 0 5px,transparent 5px 8px)}
+.tl-tick{position:absolute;top:3px;font-size:10px;color:var(--muted);transform:translateX(-50%);font-variant-numeric:tabular-nums;pointer-events:none}
+.tl-start{position:absolute;top:28px;width:9px;height:9px;margin:-4.5px 0 0 -4.5px;border-radius:50%;background:var(--muted);pointer-events:none}
+.tl-key{position:absolute;top:28px;width:17px;height:17px;margin:-8.5px 0 0 -8.5px;transform:rotate(45deg);border:2px solid var(--text);background:var(--panel);border-radius:3px;padding:0;cursor:grab;touch-action:none}
+.tl-key[aria-pressed="true"]{background:var(--text)}
+.tl-key.hit{border-color:var(--accent)}
+.tl-key.hit[aria-pressed="true"]{background:var(--accent)}
+.tl-num{position:absolute;bottom:2px;font-size:10px;color:var(--muted);transform:translateX(-50%);pointer-events:none;font-variant-numeric:tabular-nums}
+.tl-head{position:absolute;top:2px;bottom:2px;width:2px;margin-left:-1px;background:var(--accent);pointer-events:none;border-radius:1px}
+.studio input[type=number],.studio input[type=text],.studio select{font:inherit;font-size:14px;background:var(--bg);color:var(--text);border:1.5px solid var(--line);border-radius:999px;padding:3px 10px}
+.studio input[type=number]{width:76px}
+.studio input[type=text]{width:150px}
+.ease-ico{width:18px;height:12px;vertical-align:-1px;margin-right:4px}
+.mine{display:inline-flex;border:1.5px solid var(--line);border-radius:999px;overflow:hidden}
+.mine button{border:0;background:var(--panel);padding:4px 10px;cursor:pointer}
+.mine button+button{border-left:1.5px solid var(--line);color:var(--muted)}
+.mine.on{border-color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>ตัวละครก้าน + Bone Rig</h1>
+    <p>ลากที่แขน ขา หัว หรือลำตัวเพื่อหมุนข้อต่อ กดโหมดต่อสู้ 2 ตัวเพื่อดูสองตัวสู้กัน หรือโหมดแมพ RPG เพื่อพาตัวละครไปเดินตีมอนสเตอร์</p>
+  </header>
+  <div class="cols">
+    <div class="stage">
+      <div class="paper"><svg id="svg" viewBox="135 130 330 256" role="img" aria-label="ตัวละครก้านที่ปรับท่าได้"></svg></div>
+      <div class="bar">
+        <div class="grp" id="mode"><span class="lbl">โหมด</span></div>
+        <div class="grp" id="who"><span class="lbl">ควบคุม</span></div>
+        <div class="grp">
+          <button class="chip" id="tgAuto" aria-pressed="true">สู้อัตโนมัติ</button>
+          <button class="chip" id="tgBones" aria-pressed="true">แสดง bone</button>
+          <button class="chip" id="tgFlip" aria-pressed="false">หันซ้าย</button>
+        </div>
+      </div>
+      <div class="bar" id="rowPose">
+        <div class="grp" id="poses"><span class="lbl">ท่า</span></div>
+        <div class="grp" id="anims"><span class="lbl">วนซ้ำ</span></div>
+      </div>
+      <div class="bar" id="rowPose2">
+        <div class="grp" id="posesSit"><span class="lbl">ท่านั่ง</span></div>
+        <div class="grp" id="posesShow"><span class="lbl">ท่าโพส</span></div>
+      </div>
+      <div class="bar" id="rowAtk"><div class="grp" id="attacks"><span class="lbl">คอมโบ</span></div></div>
+      <div class="bar" id="rowReact"><div class="grp" id="reacts"><span class="lbl">โดนโจมตี</span></div></div>
+      <div class="bar" id="rowEmote" hidden><div class="grp" id="emotes"><span class="lbl">ท่าทาง</span></div><span class="lbl">นั่งหรือนอนพักจะฟื้น HP/SP เร็วขึ้น</span></div>
+      <div class="bar" id="rowSkill" hidden><div class="grp" id="skills"><span class="lbl">สกิล</span></div><span class="lbl">คลิกพื้นเพื่อเดิน คลิกมอนสเตอร์เพื่อตี กดเลขบนคีย์บอร์ดเพื่อใช้สกิล เดินเข้าวงวาร์ปเพื่อข้ามแมพ</span></div>
+      <div class="studio" id="rowStudio" hidden>
+        <h2>Pose Studio <span class="lbl">ตั้งคีย์ท่า เลือกเส้นโค้ง กดเล่น แล้วบันทึกเป็นท่าโจมตี</span></h2>
+        <div class="tl" id="tl" aria-label="ไทม์ไลน์คีย์เฟรม"></div>
+        <div class="bar">
+          <div class="grp"><button class="chip go" id="stPlay">▶ เล่น</button><button class="chip" id="stLoop" aria-pressed="true">วนซ้ำ</button><span class="lbl" id="stTime"></span></div>
+          <div class="grp" id="stSpeed"><span class="lbl">ความเร็ว</span></div>
+        </div>
+        <div class="bar">
+          <div class="grp"><button class="chip" id="stAdd">+ เพิ่มคีย์</button><button class="chip" id="stDel">ลบคีย์</button><button class="chip" id="stOnion" aria-pressed="true">เงาคีย์ก่อนหน้า</button></div>
+        </div>
+        <p class="hint" id="stKeyLbl"></p>
+        <div class="bar" id="stKeyRow">
+          <label class="lbl">ใช้เวลา <input type="number" id="stDur" min="0.03" max="3" step="0.01"> วิ</label>
+          <div class="grp" id="stEase"><span class="lbl">เส้นโค้ง</span></div>
+        </div>
+        <div class="bar" id="stHandRow"><div class="grp" id="stHand"><span class="lbl">มือ</span></div></div>
+        <div class="bar" id="stHitRow"><div class="grp" id="stHit"><span class="lbl">จังหวะโดน</span></div><button class="chip" id="stThud" aria-pressed="false">สะเทือนพื้น</button></div>
+        <div class="bar">
+          <div class="grp"><input type="text" id="stName" placeholder="ชื่อท่า" aria-label="ชื่อท่า" maxlength="24"><button class="chip go" id="stSave">บันทึกเป็นท่าโจมตี</button><button class="chip" id="stNew">เริ่มท่าใหม่</button></div>
+          <select id="stFrom" aria-label="แก้จากท่าที่มี"></select>
+        </div>
+        <p class="hint" id="stMsg"></p>
+        <div class="bar"><div class="grp" id="stMine"><span class="lbl">ท่าของฉัน</span></div></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="sec">
+        <h2>ชุดสำเร็จ <span class="lbl" id="editing"></span></h2>
+        <div class="grp" id="presets"></div>
+      </div>
+      <div class="sec">
+        <h2>ชิ้นส่วนที่สวมได้</h2>
+        <div class="row"><span class="lbl">หัว</span><div class="grp" id="g-head"></div></div>
+        <div class="row"><span class="lbl">ตา</span><div class="grp" id="g-eyes"></div></div>
+        <div class="row"><span class="lbl">ทรงผม</span><div class="grp" id="g-hair"></div></div>
+        <div class="row"><span class="lbl">ชุด</span><div class="grp" id="g-outfit"></div></div>
+        <div class="row"><span class="lbl">ปีก</span><div class="grp" id="g-wings"></div></div>
+        <div class="row"><span class="lbl">อาวุธ</span><div class="grp" id="g-weapon"></div></div>
+        <div class="row"><span class="lbl">มือรอง</span><div class="grp" id="g-offhand"></div></div>
+        <div class="row"><span class="lbl">มือขวา</span><div class="grp" id="g-handR"></div></div>
+        <div class="row"><span class="lbl">มือซ้าย</span><div class="grp" id="g-handL"></div></div>
+        <div class="row"><span class="lbl">เอฟเฟกต์</span><div class="grp" id="g-element"></div></div>
+      </div>
+      <div class="sec">
+        <h2>Bone</h2>
+        <div class="bones" id="bones"></div>
+        <div class="ang">
+          <input type="range" id="angle" min="-180" max="180" step="1" aria-label="มุมของ bone ที่เลือก">
+          <output id="angleOut" for="angle"></output>
+        </div>
+      </div>
+      <div class="sec">
+        <h2>ข้อมูล rig (JSON)</h2>
+        <p class="hint">โครง bone, ลำดับวาด, ช่องสวมของ และท่าปัจจุบัน นำไปสร้าง Skeleton2D หรือ rig ใน engine อื่นได้</p>
+        <textarea id="json" readonly aria-label="ข้อมูล rig แบบ JSON"></textarea>
+        <div class="grp"><button class="chip" id="copy">คัดลอก JSON</button></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/*CORE-START*/
+const PAPER='#ededee', INK='#1b1b1d';
+const BONES=[
+  {id:'root',  th:'สะโพก (root)', parent:null,    len:0,  rest:0,   d:0},
+  {id:'spine', th:'ลำตัว',         parent:'root',  len:30, art:84, rest:-90, d:1},
+  {id:'wing',  th:'ปีก',           parent:'spine', len:52, art:90, sy:.58, rest:-60, d:2, at:.8, oy:-4},
+  {id:'head',  th:'หัว',           parent:'spine', len:54, art:36, sy:1.5, rest:0, d:2, ox:-12},
+  {id:'armL_u',th:'ต้นแขนซ้าย',    parent:'spine', len:21, art:54, rest:200, d:2, at:.9, oy:-2},
+  {id:'armL_l',th:'ปลายแขนซ้าย',   parent:'armL_u',len:19, art:52, rest:-14, d:3},
+  {id:'handL', th:'มือซ้าย',       parent:'armL_l',len:8,  rest:-60, d:4},
+  {id:'armR_u',th:'ต้นแขนขวา',     parent:'spine', len:21, art:54, rest:160, d:2, at:.9, oy:2},
+  {id:'armR_l',th:'ปลายแขนขวา',    parent:'armR_u',len:19, art:52, rest:-16, d:3},
+  {id:'handR', th:'มือขวา',        parent:'armR_l',len:8,  rest:-70, d:4},
+  {id:'legL_u',th:'ต้นขาซ้าย',     parent:'root',  len:23, art:72, sy:.9, rest:110, d:1, ox:-3},
+  {id:'legL_l',th:'แข้งซ้าย',      parent:'legL_u',len:25, art:74, sy:.85, rest:2,   d:2},
+  {id:'legR_u',th:'ต้นขาขวา',      parent:'root',  len:23, art:72, sy:.9, rest:70,  d:1, ox:3},
+  {id:'legR_l',th:'แข้งขวา',       parent:'legR_u',len:25, art:74, sy:.85, rest:10,  d:2},
+];
+const BMAP=Object.fromEntries(BONES.map(b=>[b.id,b]));
+// back → front
+const ORDER=['wing','root','armL_u','armL_l','handL','legL_u','legL_l','legR_u','legR_l','spine','head','armR_u','armR_l','handR'];
+const HOME={x:300,y:292}, GROUND=HOME.y+50, GEAR=.68;
+
+function mkPose(def){
+  const a={}; for(const b of BONES) a[b.id]=(def&&def.a&&def.a[b.id]!==undefined)?def.a[b.id]:b.rest;
+  return {x:HOME.x+((def&&def.dx)||0), y:HOME.y+((def&&def.dy)||0), a};
+}
+function solve(pose){
+  const W={};
+  for(const b of BONES){
+    if(!b.parent){W[b.id]={x:pose.x,y:pose.y,r:pose.a[b.id]};continue;}
+    const p=W[b.parent], d=BMAP[b.parent].len*(b.at===undefined?1:b.at)+(b.ox||0), o=b.oy||0, pr=p.r*Math.PI/180;
+    W[b.id]={x:p.x+Math.cos(pr)*d-Math.sin(pr)*o, y:p.y+Math.sin(pr)*d+Math.cos(pr)*o, r:p.r+pose.a[b.id]};
+  }
+  return W;
+}
+function norm(a){a=((a+180)%360+360)%360-180;return a;}
+function lerpPose(A,B,k){
+  const a={}; for(const b of BONES){a[b.id]=A.a[b.id]+norm(B.a[b.id]-A.a[b.id])*k;}
+  return {x:A.x+(B.x-A.x)*k, y:A.y+(B.y-A.y)*k, a};
+}
+
+const POSES={
+  idle:{th:'ยืน',g:'act',hand:'relax',def:{}},
+  lunge:{th:'พุ่งแทง',g:'act',hand:'open',def:{dy:9,a:{footR:-108,spine:-55,head:12,wing:-40,armR_u:50,armR_l:-5,handR:-10,armL_u:215,armL_l:-60,legR_u:40,legR_l:70,legL_u:135,legL_l:10}}},
+  guard:{th:'ตั้งการ์ด',g:'act',hand:'fist',def:{dy:3,a:{footR:-98,footL:-125,spine:-84,armR_u:120,armR_l:-75,handR:-60,armL_u:130,armL_l:-90,legR_u:60,legR_l:40,legL_u:115,legL_l:15}}},
+  jump:{th:'กระโดด',g:'act',hand:'open',def:{dy:-30,a:{footR:-60,footL:-60,spine:-84,head:-8,wing:-88,armR_u:25,armR_l:-15,handR:-30,armL_u:-35,armL_l:-15,legR_u:50,legR_l:75,legL_u:120,legL_l:50}}},
+  // sitting and resting: dy lowers the hips to the floor
+  sit:{th:'นั่งเหยียดขา',g:'sit',hand:'relax',def:{dy:45,a:{spine:-99,head:4,wing:-70,armL_u:239,armL_l:0,armR_u:190,armR_l:-25,legR_u:2,legR_l:6,legL_u:-8,legL_l:22}}},
+  sitknee:{th:'นั่งชันเข่า',g:'sit',hand:'relax',def:{dy:44,a:{spine:-101,head:6,wing:-70,armL_u:241,armL_l:0,armR_u:112,armR_l:-22,handR:-80,legR_u:-40,legR_l:100,legL_u:5,legL_l:5}}},
+  lotus:{th:'ขัดสมาธิ',g:'sit',hand:'open',def:{dy:44,a:{spine:-90,head:0,wing:-75,armR_u:132,armR_l:-34,handR:-50,armL_u:142,armL_l:-42,legR_u:-6,legR_l:150,legL_u:4,legL_l:160}}},
+  squat:{th:'นั่งยอง',g:'sit',hand:'relax',def:{dy:31,a:{spine:-75,head:8,wing:-55,armR_u:112,armR_l:-42,handR:-40,armL_u:126,armL_l:-46,legR_u:-20,legR_l:125,legL_u:-15,legL_l:122}}},
+  kneel:{th:'คุกเข่า',g:'sit',hand:'fist',def:{dy:23,a:{spine:-87,head:10,wing:-50,armR_u:152,armR_l:-42,handR:-110,armL_u:112,armL_l:-32,legR_u:0,legR_l:90,legL_u:100,legL_l:80}}},
+  lie:{th:'นอน',g:'sit',hand:'relax',def:{dy:44,a:{root:-90,spine:-88,head:6,wing:-70,armR_u:205,armR_l:-10,handR:-20,armL_u:150,armL_l:-120,legR_u:84,legR_l:6,legL_u:64,legL_l:48}}},
+  // show-off poses
+  cheer:{th:'ชูสองมือ',g:'show',hand:'open',def:{dy:-3,a:{spine:-92,head:-10,wing:-95,armR_u:26,armR_l:-10,handR:-20,armL_u:-32,armL_l:10,legR_u:64,legL_u:116}}},
+  wavehi:{th:'ทักทาย',g:'show',hand:'open',def:{a:{spine:-93,head:-6,armL_u:18,armL_l:-52}}},
+  peace:{th:'ชูสองนิ้ว',g:'show',hand:'peace',def:{a:{spine:-95,head:-8,armL_u:42,armL_l:-46,armR_u:176,legL_u:122,legL_l:62,legR_u:80,legR_l:4}}},
+  point:{th:'ชี้',g:'show',hand:'point',def:{dy:2,a:{spine:-84,head:4,armL_u:93,armL_l:-6,armR_u:178,armR_l:-30,legR_u:58,legR_l:22,legL_u:120,legL_l:6}}},
+  think:{th:'ครุ่นคิด',g:'show',hand:'relax',def:{a:{spine:-86,head:12,armL_u:122,armL_l:-134,armR_u:170,armR_l:-60,handR:-30,legR_u:76,legL_u:104}}},
+  hips:{th:'เท้าเอว',g:'show',hand:'fist',def:{a:{spine:-94,head:-6,wing:-80,armR_u:132,armR_l:108,handR:-60,armL_u:232,armL_l:-104,legR_u:60,legR_l:12,legL_u:120,legL_l:2}}},
+  bow:{th:'โค้งคำนับ',g:'show',hand:'relax',def:{a:{spine:-38,head:22,wing:-30,armR_u:132,armR_l:-6,armL_u:146,armL_l:-6,legR_u:84,legR_l:6,legL_u:96,legL_l:0}}},
+  win:{th:'ชูอาวุธ',g:'show',hand:'fist',def:{a:{spine:-94,head:-8,armR_u:10,armR_l:-8,handR:-80,armL_u:232,armL_l:-104,legR_u:62,legL_u:118}}},
+};
+// keyframes: d = seconds to reach the key, e = easing, hit = impact on arrival
+const P_WIND={dx:-10,dy:2,h:'fist',a:{spine:-100,head:-6,wing:-82,armR_u:-5,armR_l:-45,handR:-50,armL_u:150,armL_l:-40,legR_u:70,legR_l:20,legL_u:105,legL_l:10}};
+const A_STRIKE={footR:-108,spine:-55,head:12,wing:-38,armR_u:80,armR_l:-8,handR:10,armL_u:215,armL_l:-60,legR_u:40,legR_l:70,legL_u:135,legL_l:10};
+const A_SETTLE=Object.assign({},A_STRIKE,{spine:-52,armR_u:90,handR:18});
+const A_LOW={footR:-103,spine:-66,head:10,wing:-50,armR_u:185,armR_l:-10,handR:40,armL_u:120,armL_l:-70,legR_u:45,legR_l:60,legL_u:125,legL_l:15};
+const A_UP={spine:-94,head:-10,wing:-95,armR_u:10,armR_l:-10,handR:-30,armL_u:215,armL_l:-30,legR_u:72,legR_l:12,legL_u:112,legL_l:25};
+const A_PULL={spine:-78,head:6,wing:-60,armR_u:200,armR_l:-110,handR:-10,armL_u:110,armL_l:-30,legR_u:55,legR_l:50,legL_u:115,legL_l:20};
+const A_THRUST={footR:-108,spine:-52,head:14,wing:-36,armR_u:48,armR_l:-4,handR:6,armL_u:215,armL_l:-60,legR_u:38,legR_l:72,legL_u:138,legL_l:8};
+const A_HOP={footR:-60,footL:-60,spine:-88,wing:-92,armR_u:120,armR_l:-60,handR:-50,armL_u:200,armL_l:-40,legR_u:60,legR_l:60,legL_u:100,legL_l:60};
+const A_PULL2=Object.assign({},A_PULL,{armR_u:185,armR_l:-95,spine:-72});
+const A_CHAMB={spine:-100,head:-4,armR_u:120,armR_l:-80,handR:-60,armL_u:132,armL_l:-92,legR_u:-8,legR_l:112,legL_u:96,legL_l:4};
+const A_KICK=Object.assign({},A_CHAMB,{spine:-110,legR_u:-4,legR_l:6});
+const A_CHAMB2=Object.assign({},A_CHAMB,{spine:-112,legR_u:-42,legR_l:105});
+const A_KICK2=Object.assign({},A_CHAMB2,{spine:-118,legR_u:-36,legR_l:6});
+const A_CROUCH=Object.assign({},P_WIND.a,{spine:-78,legR_u:52,legR_l:62,legL_u:112,legL_l:42});
+const A_TUCK={spine:-70,head:20,wing:-100,armR_u:-10,armR_l:-30,handR:-60,armL_u:140,armL_l:-90,legR_u:20,legR_l:115,legL_u:45,legL_l:115};
+const A_RISE=Object.assign({},A_UP,{armR_u:-5,armR_l:-45,handR:-50,legR_u:50,legR_l:70,legL_u:110,legL_l:50});
+// reactions: the attacker stands in front (+x), so getting hit moves the body toward -x
+const A_HITHI={spine:-114,head:-28,wing:-100,armR_u:150,armR_l:-30,handR:-40,armL_u:230,armL_l:-25,legR_u:74,legR_l:8,legL_u:120,legL_l:14};
+const A_HITHI2=Object.assign({},A_HITHI,{spine:-103,head:-12});
+const A_HITLO={spine:-58,head:28,wing:-45,armR_u:125,armR_l:-105,handR:-20,armL_u:150,armL_l:-100,legR_u:60,legR_l:38,legL_u:104,legL_l:28};
+const A_AIR={root:-35,spine:-100,head:-22,wing:-110,armR_u:95,armR_l:-20,armL_u:255,armL_l:-20,legR_u:48,legR_l:34,legL_u:98,legL_l:44};
+const A_AIR2=Object.assign({},A_AIR,{root:-75});
+const A_DOWN={root:-90,spine:-88,head:6,wing:-70,armR_u:205,armR_l:-10,handR:-20,armL_u:165,armL_l:-12,legR_u:84,legR_l:6,legL_u:96,legL_l:4};
+const A_SIT={root:-40,spine:-75,head:10,armR_u:215,armR_l:-20,armL_u:200,armL_l:-15,legR_u:10,legR_l:105,legL_u:50,legL_l:95};
+const A_BLOCK={spine:-96,head:-4,armR_u:118,armR_l:-78,handR:-75,armL_u:128,armL_l:-92,legR_u:58,legR_l:36,legL_u:118,legL_l:14};
+const A_WIN={spine:-94,head:-8,armR_u:10,armR_l:-8,handR:-80,armL_u:200,armL_l:-30};
+const EASE={io:k=>k*k*(3-2*k), out:k=>1-Math.pow(1-k,4), lin:k=>k};
+const REST=mkPose({});
+// key: d = seconds to reach it, e = easing, hit = what it does to the opponent on arrival, thud = body hits the floor
+// shift = how far the fighter has really moved by the end of the track
+function mkTrack(keys,shift){let t=0;const tr=keys.map(k=>{t+=k.d;return {t0:t-k.d,t1:t,e:k.e,p:mkPose(k.def),hit:k.hit||null,shoot:k.shoot||null,thud:!!k.thud,h:k.h||k.def.h||'relax'};});tr.shift=shift||0;return tr;}
+const K=(d,e,def,x)=>Object.assign({d,e,def},x||{});
+const FALL=[K(.10,'out',{dx:-18,dy:-26,a:A_AIR},{h:'open'}),K(.20,'io',{dx:-41,dy:-10,a:A_AIR2},{h:'open'}),K(.13,'lin',{dx:-57,dy:46,a:A_DOWN},{thud:true,h:'open'}),K(.07,'out',{dx:-62,dy:42,a:A_DOWN}),K(.09,'io',{dx:-64,dy:46,a:A_DOWN})];
+const TRACKS={
+  slash:mkTrack([K(.30,'io',P_WIND),K(.07,'lin',P_WIND),
+    K(.09,'out',{dx:21,dy:9,a:A_STRIKE},{h:'open',hit:{t:'high',push:24,dmg:10}}),K(.14,'io',{dx:24,dy:10,a:A_SETTLE},{h:'open'}),K(.22,'lin',{dx:24,dy:10,a:A_SETTLE},{h:'open'}),
+    K(.40,'io',{}),K(.30,'lin',{})]),
+  combo:mkTrack([K(.26,'io',Object.assign({},P_WIND,{dx:-14})),
+    K(.08,'out',{dx:6,dy:9,a:A_STRIKE},{h:'open',hit:{t:'high',push:12,dmg:8}}),K(.10,'io',{dx:7,dy:10,a:A_SETTLE},{h:'open'}),
+    K(.16,'io',{dx:10,dy:7,a:A_LOW},{h:'fist'}),
+    K(.10,'out',{dx:24,dy:-8,a:A_UP},{h:'claw',hit:{t:'high',push:12,dmg:8}}),K(.14,'io',{dx:27,dy:-11,a:Object.assign({},A_UP,{armR_u:0,handR:-40})},{h:'claw'}),
+    K(.18,'io',{dx:21,dy:6,a:A_PULL},{h:'chop'}),
+    K(.08,'out',{dx:39,dy:9,a:A_THRUST},{h:'open',hit:{t:'low',push:46,dmg:12}}),K(.12,'io',{dx:42,dy:10,a:Object.assign({},A_THRUST,{spine:-50})},{h:'open'}),K(.24,'lin',{dx:42,dy:10,a:Object.assign({},A_THRUST,{spine:-50})},{h:'open'}),
+    K(.20,'io',{dx:21,dy:-13,a:A_HOP}),K(.20,'io',{}),K(.30,'lin',{})]),
+  flurry:mkTrack([K(.18,'io',{dx:0,dy:6,a:A_PULL},{h:'chop'}),
+    K(.06,'out',{dx:13,dy:8,a:A_THRUST},{h:'chop',hit:{t:'low',push:6,dmg:5}}),K(.08,'io',{dx:10,dy:7,a:A_PULL2},{h:'chop'}),
+    K(.06,'out',{dx:15,dy:8,a:Object.assign({},A_THRUST,{armR_u:36,spine:-60})},{h:'chop',hit:{t:'high',push:6,dmg:5}}),K(.08,'io',{dx:13,dy:7,a:A_PULL2},{h:'chop'}),
+    K(.06,'out',{dx:18,dy:8,a:A_THRUST},{h:'chop',hit:{t:'low',push:6,dmg:5}}),K(.14,'io',{dx:11,dy:6,a:A_PULL},{h:'fist'}),
+    K(.08,'out',{dx:35,dy:9,a:A_THRUST},{h:'open',hit:{t:'low',push:56,dmg:11}}),K(.26,'lin',{dx:36,dy:10,a:A_THRUST},{h:'open'}),
+    K(.20,'io',{dx:17,dy:-12,a:A_HOP}),K(.20,'io',{}),K(.30,'lin',{})]),
+  kick:mkTrack([K(.16,'io',{dx:4,dy:-2,a:A_CHAMB},{h:'fist'}),
+    K(.06,'out',{dx:11,dy:-2,a:A_KICK},{h:'fist',hit:{t:'low',push:30,dmg:8,kick:true}}),K(.10,'io',{dx:8,dy:-2,a:A_CHAMB},{h:'fist'}),
+    K(.10,'io',{dx:13,dy:1,a:{}},{h:'fist'}),K(.12,'io',{dx:15,dy:-2,a:A_CHAMB2},{h:'fist'}),
+    K(.07,'out',{dx:22,dy:-2,a:A_KICK2},{h:'open',hit:{t:'launch',push:20,dmg:14,kick:true}}),K(.14,'lin',{dx:22,dy:-2,a:A_KICK2},{h:'open'}),
+    K(.14,'io',{dx:14,dy:-2,a:A_CHAMB},{h:'fist'}),K(.22,'io',{}),K(.30,'lin',{})]),
+  flip:mkTrack([K(.18,'io',{dx:-4,dy:10,a:A_CROUCH},{h:'fist'}),
+    K(.11,'out',{dx:14,dy:-33,a:Object.assign({},A_TUCK,{root:110})},{h:'fist'}),K(.11,'lin',{dx:32,dy:-40,a:Object.assign({},A_TUCK,{root:230})},{h:'fist'}),
+    K(.09,'out',{dx:49,dy:9,a:Object.assign({},A_STRIKE,{root:360})},{h:'open',hit:{t:'launch',push:30,dmg:16}}),
+    K(.14,'io',{dx:50,dy:10,a:Object.assign({},A_SETTLE,{root:360})},{h:'open'}),K(.20,'lin',{dx:50,dy:10,a:Object.assign({},A_SETTLE,{root:360})},{h:'open'}),
+    K(.30,'io',{dx:28,a:{root:360}}),K(.30,'lin',{dx:28,a:{root:360}})],28),
+  rise:mkTrack([K(.20,'io',{dx:0,dy:7,a:A_LOW},{h:'fist'}),
+    K(.09,'out',{dx:15,dy:-8,a:A_UP},{h:'claw',hit:{t:'launch',push:10,dmg:9}}),
+    K(.12,'io',{dx:25,dy:-38,a:A_RISE},{h:'fist'}),K(.10,'lin',{dx:38,dy:-39,a:A_RISE},{h:'fist'}),
+    K(.08,'out',{dx:48,dy:9,a:A_STRIKE},{h:'open',hit:{t:'launch',push:30,dmg:13}}),K(.14,'io',{dx:49,dy:10,a:A_SETTLE},{h:'open'}),K(.22,'lin',{dx:49,dy:10,a:A_SETTLE},{h:'open'}),
+    K(.20,'io',{dx:24,dy:-12,a:A_HOP}),K(.20,'io',{}),K(.30,'lin',{})]),
+  hitHigh:mkTrack([K(.06,'out',{dx:-6,dy:1,a:A_HITHI},{h:'open'}),K(.16,'io',{dx:-8,a:A_HITHI2},{h:'open'}),K(.22,'io',{})]),
+  hitLow:mkTrack([K(.06,'out',{dx:-4,dy:4,a:A_HITLO},{h:'fist'}),K(.20,'lin',{dx:-6,dy:4,a:A_HITLO},{h:'fist'}),K(.24,'io',{})]),
+  launch:mkTrack(FALL.concat([K(.42,'lin',{dx:-64,dy:46,a:A_DOWN}),K(.26,'io',{dx:-59,dy:27,a:A_SIT},{h:'open'}),K(.24,'io',{dx:-53})]),-53),
+  ko:mkTrack(FALL.concat([K(4,'lin',{dx:-64,dy:46,a:A_DOWN})]),-64),
+  block:mkTrack([K(.05,'out',{dx:-6,dy:3,a:A_BLOCK},{h:'fist'}),K(.18,'lin',{dx:-7,dy:3,a:A_BLOCK},{h:'fist'}),K(.20,'io',{})]),
+  dodge:mkTrack([K(.08,'io',{dy:5,a:{spine:-80,legR_u:55,legR_l:50,legL_u:110,legL_l:30}}),K(.14,'out',{dx:-36,dy:-10,a:A_HOP}),K(.14,'io',{dx:-46,dy:2,a:{spine:-84,legR_u:60,legR_l:30,legL_u:112,legL_l:20}}),K(.12,'io',{dx:-46})],-46),
+  victory:mkTrack([K(.30,'io',{a:A_WIN},{h:'fist'}),K(1.4,'lin',{a:A_WIN},{h:'fist'}),K(.30,'io',{})]),
+};
+const animLen=n=>TRACKS[n]?TRACKS[n][TRACKS[n].length-1].t1:0;
+function evalTrack(tr,t){
+  const total=tr[tr.length-1].t1, u=t%total; let i=0; while(i<tr.length-1&&u>=tr[i].t1)i++;
+  const B=tr[i], P=i?tr[i-1]:null, A=P?P.p:REST, k=(u-B.t0)/(B.t1-B.t0), L=B.e==='out'?.35:B.e==='io'?.2:0, f=EASE[B.e];
+  // overlapping action: bones further down the chain start later, so limbs whip instead of moving as one block
+  const kk=d=>f(Math.max(0,Math.min(1,k*(1+L)-L*d/4)));
+  const a={}; for(const b of BONES)a[b.id]=A.a[b.id]+norm(B.p.a[b.id]-A.a[b.id])*kk(b.d);
+  const k0=kk(0);
+  return {pose:{x:A.x+(B.p.x-A.x)*k0,y:A.y+(B.p.y-A.y)*k0,a},key:i,prev:P,wind:0,hand:k>.4?B.h:(P?P.h:'relax')};
+}
+const LOOPS={idle:{th:'หายใจ'},run:{th:'วิ่ง'},wave:{th:'โบกมือ'},hype:{th:'กระโดดดีใจ'}};
+// ---- attacks that depend on what the weapon is ----
+const A_AIM={spine:-92,head:0,armR_u:87,armR_l:-2,handR:7,armL_u:262,armL_l:-165,handL:-20,legR_u:62,legR_l:14,legL_u:118,legL_l:4};
+const A_LOOSE=Object.assign({},A_AIM,{spine:-95,armL_u:250,armL_l:-70});
+const A_AIRAIM=Object.assign({},A_AIM,{legR_u:50,legR_l:60,legL_u:105,legL_l:50});
+const A_GUN={spine:-90,armR_u:88,armR_l:-2,handR:4,armL_u:128,armL_l:-52,legR_u:64,legR_l:12,legL_u:116,legL_l:4};
+const A_RECOIL=Object.assign({},A_GUN,{spine:-97,head:-6,armR_u:72,handR:-8});
+const A_CHARGE={spine:-95,head:-8,wing:-85,armR_u:28,armR_l:-10,handR:-13,armL_u:112,armL_l:-22,handL:-10,legR_u:66,legR_l:12,legL_u:114,legL_l:6};
+const A_CASTOUT={spine:-80,head:6,wing:-45,armR_u:78,armR_l:-8,handR:-2,armL_u:215,armL_l:-30,legR_u:52,legR_l:40,legL_u:124,legL_l:10};
+const A_BIG=Object.assign({},A_CHARGE,{spine:-100,armL_u:40,armL_l:-10});
+const A_SLAM={spine:-62,head:14,wing:-40,armR_u:95,armR_l:-5,handR:20,armL_u:215,armL_l:-50,legR_u:45,legR_l:62,legL_u:128,legL_l:14};
+const A_JAB={spine:-84,armL_u:92,armL_l:-4,handL:0,armR_u:118,armR_l:-80,handR:-60,legR_u:60,legR_l:30,legL_u:118,legL_l:10};
+const A_CROSS={spine:-72,head:8,armR_u:86,armR_l:-4,handR:0,armL_u:140,armL_l:-100,legR_u:50,legR_l:44,legL_u:128,legL_l:8};
+const S_ARROW={kind:'arrow',hit:{t:'high',push:14,dmg:9}}, S_ARROW2={kind:'arrow',hit:{t:'high',push:8,dmg:6}}, S_BULLET={kind:'bullet',hit:{t:'high',push:10,dmg:8}}, S_BULLET2={kind:'bullet',hit:{t:'high',push:6,dmg:5}};
+Object.assign(TRACKS,{
+  thrust:mkTrack([K(.20,'io',{dy:6,a:A_PULL},{h:'chop'}),K(.08,'out',{dx:30,dy:9,a:A_THRUST},{h:'open',hit:{t:'low',push:40,dmg:10}}),K(.22,'lin',{dx:31,dy:9,a:A_THRUST},{h:'open'}),K(.25,'io',{}),K(.2,'lin',{})]),
+  punch:mkTrack([K(.12,'io',{dy:3,a:A_BLOCK},{h:'fist'}),K(.06,'out',{dx:8,dy:3,a:A_JAB},{h:'fist',hit:{t:'high',push:8,dmg:5,kick:true}}),K(.08,'io',{dx:6,dy:3,a:A_BLOCK},{h:'fist'}),
+    K(.07,'out',{dx:18,dy:5,a:A_CROSS},{h:'fist',hit:{t:'high',push:26,dmg:9,kick:true}}),K(.16,'lin',{dx:18,dy:5,a:A_CROSS},{h:'fist'}),K(.22,'io',{}),K(.2,'lin',{})]),
+  // an arrow, bullet or spell leaves when its key is reached
+  shoot:mkTrack([K(.26,'io',{a:A_AIM},{h:'fist'}),K(.12,'lin',{a:A_AIM},{h:'fist',shoot:S_ARROW}),K(.05,'out',{dx:-2,a:A_LOOSE},{h:'open'}),K(.18,'lin',{dx:-2,a:A_LOOSE},{h:'open'}),K(.24,'io',{}),K(.2,'lin',{})]),
+  volley:mkTrack([K(.24,'io',{a:A_AIM},{h:'fist'}),K(.08,'lin',{a:A_AIM},{h:'fist',shoot:S_ARROW2}),K(.05,'out',{a:A_LOOSE},{h:'open'}),K(.12,'io',{a:A_AIM},{h:'fist',shoot:S_ARROW2}),K(.05,'out',{a:A_LOOSE},{h:'open'}),
+    K(.12,'io',{a:A_AIM},{h:'fist',shoot:S_ARROW2}),K(.05,'out',{a:A_LOOSE},{h:'open'}),K(.16,'lin',{a:A_LOOSE},{h:'open'}),K(.24,'io',{}),K(.2,'lin',{})]),
+  backshot:mkTrack([K(.10,'io',{dy:5,a:{spine:-80,legR_u:55,legR_l:50,legL_u:110,legL_l:30}}),K(.16,'out',{dx:-36,dy:-14,a:A_AIRAIM},{h:'fist',shoot:S_ARROW}),
+    K(.05,'out',{dx:-40,dy:-12,a:Object.assign({},A_AIRAIM,{armL_u:250,armL_l:-70})},{h:'open'}),K(.14,'io',{dx:-46,dy:3,a:A_LOOSE},{h:'open'}),K(.2,'io',{dx:-46}),K(.15,'lin',{dx:-46})],-46),
+  fire:mkTrack([K(.16,'io',{a:A_GUN},{h:'fist',shoot:S_BULLET}),K(.04,'out',{dx:-3,a:A_RECOIL},{h:'fist'}),K(.14,'io',{a:A_GUN},{h:'fist'}),K(.22,'io',{}),K(.2,'lin',{})]),
+  rapid:mkTrack([K(.16,'io',{a:A_GUN},{h:'fist',shoot:S_BULLET2}),K(.04,'out',{dx:-2,a:A_RECOIL},{h:'fist'}),K(.09,'io',{a:A_GUN},{h:'fist',shoot:S_BULLET2}),K(.04,'out',{dx:-4,a:A_RECOIL},{h:'fist'}),
+    K(.09,'io',{dx:-2,a:A_GUN},{h:'fist',shoot:S_BULLET2}),K(.05,'out',{dx:-6,a:A_RECOIL},{h:'fist'}),K(.14,'io',{dx:-4,a:A_GUN},{h:'fist'}),K(.22,'io',{}),K(.2,'lin',{})]),
+  cast:mkTrack([K(.28,'io',{a:A_CHARGE},{h:'open'}),K(.14,'lin',{a:A_CHARGE},{h:'open'}),K(.07,'out',{dx:6,dy:4,a:A_CASTOUT},{h:'open',shoot:{kind:'orb',hit:{t:'low',push:22,dmg:12}}}),
+    K(.2,'lin',{dx:6,dy:4,a:A_CASTOUT},{h:'open'}),K(.28,'io',{}),K(.2,'lin',{})]),
+  burst:mkTrack([K(.36,'io',{dy:-8,a:A_BIG},{h:'open'}),K(.18,'lin',{dy:-9,a:A_BIG},{h:'open'}),K(.08,'out',{dx:10,dy:9,a:A_SLAM},{h:'fist',thud:true,shoot:{kind:'nova',hit:{t:'launch',push:20,dmg:16}}}),
+    K(.26,'lin',{dx:10,dy:9,a:A_SLAM},{h:'fist'}),K(.3,'io',{}),K(.2,'lin',{})]),
+});
+const ATTACKS={slash:{th:'ฟันเดี่ยว'},combo:{th:'สามจังหวะ'},flurry:{th:'แทงรัว'},kick:{th:'เตะคู่'},flip:{th:'ตีลังกาฟัน'},rise:{th:'เสยแล้วทุบ'},
+  thrust:{th:'แทง'},punch:{th:'หมัดคู่'},shoot:{th:'ยิงธนู'},volley:{th:'ยิงสามดอก'},backshot:{th:'ถอยยิง'},fire:{th:'ยิงปืน'},rapid:{th:'ยิงรัว'},cast:{th:'ยิงเวท'},burst:{th:'ระเบิดเวท'}};
+// first entry = normal attack for that weapon type
+const ATKSET={blade:['slash','combo','flip','rise','kick'],pole:['thrust','flurry','flip','kick'],fist:['punch','kick','flip'],bow:['shoot','volley','backshot'],gun:['fire','rapid'],magic:['cast','burst']};
+const RANGED={bow:205,gun:185,magic:170};
+const SPCOST={combo:8,flurry:8,flip:12,rise:12,kick:5,volley:9,backshot:7,rapid:9,burst:14};
+const SHOT={arrow:{v:640},bullet:{v:1150},orb:{v:400},nova:{v:330}};
+function shotArt(kind,c,age){
+  if(kind==='arrow')return `<path d="M-24,0 L5,0" ${LN.replace('1.1','1.7')}/><path d="M4,-3.2 L12,0 L4,3.2Z" fill="${INK}"/><path d="M-24,0 l-5,-3 M-24,0 l-5,3 M-20,0 l-5,-3 M-20,0 l-5,3 M-38,-2.4 l-14,0 M-34,2.4 l-9,0" ${LN}/>`;
+  if(kind==='bullet')return `<path d="M-5,0 L3,0" fill="none" stroke="${INK}" stroke-width="3.2" stroke-linecap="round"/><path d="M-12,-2.2 l-24,0 M-10,2.2 l-16,0 M-15,0 l-34,0" ${LN} opacity=".6"/>`;
+  const k=kind==='nova'?1.9:1;
+  return `<g transform="scale(${k})"><circle r="6.5" fill="${PAPER}" stroke="${c[0]}" stroke-width="1.8"/><circle r="6.5" fill="url(#h2)" opacity=".6"/>${swirlSvg(0,0,age*2.2,1,.42)}<path d="M-13,-3 l-12,0 M-11,3 l-8,0 M-15,0 l-16,0" fill="none" stroke="${c[0]}" stroke-width="1.2" stroke-linecap="round" opacity=".7"/></g>`;
+}
+
+const REACTS={hitHigh:{th:'โดนบน'},hitLow:{th:'โดนท้อง'},launch:{th:'ลอยล้ม'},block:{th:'กัน'},dodge:{th:'ถอยหลบ'}};
+function animate(name,t){
+  if(name==='idle'){
+    const p=mkPose({}), s=Math.sin(t*1.9);
+    p.y+=1.6*s; p.a.spine+=1.5*s; p.a.head-=1.5*s; p.a.wing+=6*Math.sin(t*1.9-.6); p.a.armR_u+=2.5*Math.sin(t*1.9+1); p.a.armL_u-=2.5*Math.sin(t*1.9+1);
+    p.a.legR_u-=.8*s; p.a.legR_l+=1.6*s; p.a.legL_u-=.8*s; p.a.legL_l+=1.6*s;
+    return {pose:p,key:0,prev:null,wind:0,hand:'relax'};
+  }
+  if(name==='run'){
+    const q=t*10, s=Math.sin(q), c=Math.cos(q), sm=v=>{v=Math.max(0,v);return v*v*(3-2*v);};
+    const p=mkPose({dy:3-6*Math.abs(c),a:{spine:-72+2*Math.sin(q*2),head:10,wing:-48+14*Math.sin(q*2),
+      legR_u:88-46*s, legR_l:14+74*sm(Math.cos(q+.35)), legL_u:88+46*s, legL_l:14+74*sm(-Math.cos(q+.35)),
+      armR_u:166+42*s, armR_l:-82-10*s, handR:-25, armL_u:176-42*s, armL_l:-82+10*s, handL:-40}});
+    return {pose:p,key:0,prev:null,wind:24,hand:'fist'};
+  }
+  if(name==='wave'){
+    const p=mkPose(POSES.wavehi.def); p.y+=Math.sin(t*1.9); p.a.armL_l+=26*Math.sin(t*9); p.a.head+=3*Math.sin(t*4.5);
+    return {pose:p,key:0,prev:null,wind:0,hand:'open'};
+  }
+  if(name==='hype'){
+    const p=mkPose(POSES.cheer.def), u=(t*2.2)%1, j=Math.sin(Math.PI*Math.min(1,u*1.4)); p.y-=18*j; 
+    const b=1-j; p.a.legR_u-=18*b; p.a.legR_l+=36*b; p.a.legL_u-=14*b; p.a.legL_l+=30*b; p.y+=7*b; p.a.armR_u+=10*Math.sin(t*13.8); p.a.armL_u-=10*Math.sin(t*13.8);
+    return {pose:p,key:0,prev:null,wind:0,hand:'open'};
+  }
+  return evalTrack(TRACKS[name],t);
+}
+
+const ELEMENTS={mono:{th:'ดินสอดำ',c:['#1b1b1d','#77777a','#c9c9cc']},fire:{th:'ไฟ',c:['#e23d28','#f58a1f','#ffd23f']},ice:{th:'น้ำแข็ง',c:['#2563ae','#4fb3e8','#d9f4ff']},bolt:{th:'สายฟ้า',c:['#6a3bd1','#b08cff','#fff27a']}};
+const SK=`stroke="${INK}" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"`;
+const LN=`fill="none" stroke="${INK}" stroke-width="1.1" stroke-linecap="round"`;
+// pencil tones: 0 paper, 1 light hatch, 2 dense hatch, 3 solid graphite. Template carries fill="@".
+function tone(tpl,t){
+  if(t===3)return tpl.replace('@',INK);
+  const base=tpl.replace('@',PAPER);
+  return t===0?base:base+tpl.replace('@',`url(#h${t})`);
+}
+const RS=(sw,k,px,py,s)=>`<g transform="rotate(${((sw||0)*k).toFixed(1)} ${px} ${py})">${s}</g>`; // secondary motion
+const U=s=>`<g transform="rotate(90)">${s}</g>`;               // upright screen coords for spine
+const UH=s=>`<g transform="rotate(90) translate(0 -22) scale(.7) translate(0 26)">${s}</g>`; // head-space art
+const UW=s=>`<g transform="rotate(150)">${s}</g>`;             // wing art, upright at rest
+
+const CAP=`<path d="M21,-40 Q8,-55 -8,-51 Q-24,-46 -25,-26 Q-14,-40 2,-41 Q12,-41 21,-40Z" fill="@" ${SK}/>`;
+const HAIR={
+  none:{th:'ไม่มี',f:()=>[]},
+  spiky:{th:'ผมชี้',f:()=>[{bone:'head',layer:'over',svg:UH(tone(`<path d="M-22,-28 L-36,-34 L-25,-41 L-37,-55 L-19,-51 L-19,-70 L-5,-55 L4,-72 L9,-54 L24,-63 L19,-44 Q2,-52 -10,-42 Q-18,-36 -22,-28Z" fill="@" ${SK}/>`,3))}]},
+  long:{th:'ผมยาว',f:sw=>[
+    {bone:'head',layer:'back',svg:UH(RS(sw,.8,-12,-40,tone(`<path d="M-6,-50 Q-32,-48 -30,-18 Q-28,6 -42,34 Q-24,36 -10,20 Q-6,-8 -12,-30Z" fill="@" ${SK}/>`,2)+`<path d="M-22,-30 Q-22,0 -32,26 M-16,-24 Q-14,0 -20,22" ${LN}/>`))},
+    {bone:'head',layer:'over',svg:UH(tone(CAP,3))}]},
+  pony:{th:'หางม้า',f:sw=>[{bone:'head',layer:'over',svg:UH(
+    RS(sw,.9,-22,-36,tone(`<path d="M-22,-40 Q-48,-48 -56,-22 Q-58,-6 -48,8 Q-45,-12 -36,-22 Q-28,-28 -22,-30Z" fill="@" ${SK}/>`,2))+tone(CAP,3)+tone(`<circle cx="-23" cy="-36" r="4.5" fill="@" ${SK}/>`,0))}]},
+  kasa:{th:'หมวกงอบ',f:()=>[{bone:'head',layer:'over',svg:UH(tone(`<path d="M-44,-34 L0,-66 L44,-34 Q0,-25 -44,-34Z" fill="@" ${SK}/>`,3)+`<path d="M-3,-60 L-26,-36 M3,-59 L12,-34" fill="none" stroke="${PAPER}" stroke-width="1.6" stroke-linecap="round" opacity=".7"/>`)}]},
+  mohawk:{th:'โมฮอว์ก',f:()=>[{bone:'head',layer:'over',svg:UH(tone(`<path d="M-14,-44 L-26,-60 L-10,-57 L-8,-76 L2,-59 L13,-71 L15,-50 Q2,-54 -14,-44Z" fill="@" ${SK}/>`,3))}]},
+};
+
+const both=(pat,svg,layer)=>['L','R'].map(s=>({bone:pat.replace('*',s),layer:layer||'over',svg}));
+const cuff=(x,w,h,t)=>tone(`<rect x="${x}" y="${-h/2}" width="${w}" height="${h}" rx="2" fill="@" ${SK}/>`,t);
+const greave=tone(`<path d="M28,-8 L74,-11.5 L78,-10 L78,9 L74,10 L28,7Z" fill="@" ${SK}/>`,0)+`<path d="M38,-8 L38,7 M30,0 L74,0" ${LN}/>`;
+const OUTFIT={
+  none:{th:'ไม่มี',f:()=>[]},
+  armor:{th:'เกราะ',f:()=>[
+    {bone:'spine',layer:'over',svg:U(tone(`<path d="M-18,-85 Q0,-90 18,-85 L14,-50 L7,-22 L-7,-22 L-14,-50Z" fill="@" ${SK}/>`,1)+`<path d="M0,-86 L0,-24 M-13,-62 Q0,-54 13,-62 M-9,-40 L9,-40" ${LN}/>`+tone(`<rect x="-8" y="-22" width="16" height="7" rx="1.5" fill="@" ${SK}/>`,3))},
+    ...both('arm*_u',tone(`<ellipse cx="3" cy="0" rx="13" ry="9" fill="@" ${SK}/>`,1)+`<path d="M-6,-5 Q3,-1 -6,5" ${LN}/>`),
+    ...both('arm*_l',cuff(20,26,10,0)+`<path d="M28,-5 L28,5 M38,-5 L38,5" ${LN}/>`),
+    ...both('leg*_u',cuff(8,30,14,1)),
+    ...both('leg*_l',greave),
+  ]},
+  robe:{th:'ชุดนักเวท',f:()=>[
+    {bone:'spine',layer:'over',svg:U(tone(`<path d="M-16,-85 Q0,-89 16,-85 L24,44 Q0,50 -24,44Z" fill="@" ${SK}/>`,1)+`<path d="M0,-86 L0,46 M-10,-20 Q-14,10 -16,42 M10,-20 Q14,10 16,42" ${LN}/>`+tone(`<rect x="-10" y="-26" width="20" height="6" fill="@" ${SK}/>`,3))},
+    ...both('arm*_u',cuff(-2,56,10,1)),
+    ...both('arm*_l',tone(`<path d="M-2,-5 L44,-14 L44,14 L-2,5Z" fill="@" ${SK}/>`,1)+`<path d="M40,-12 L40,12" ${LN}/>`),
+    {bone:'head',layer:'over',svg:UH(tone(`<path d="M-19,-45 Q-6,-74 -18,-106 Q12,-86 19,-45Z" fill="@" ${SK}/>`,2)+tone(`<ellipse cx="0" cy="-44" rx="36" ry="7.5" fill="@" ${SK}/>`,1))},
+  ]},
+  ninja:{th:'นินจา',f:sw=>[
+    {bone:'spine',layer:'back',svg:U(RS(sw,.6,0,-78,tone(`<path d="M0,-84 Q-36,-88 -66,-68 L-60,-54 Q-30,-72 0,-70Z" fill="@" ${SK}/>`,2)))},
+    {bone:'spine',layer:'over',svg:U(tone(`<path d="M-15,-84 Q0,-88 15,-84 L4,-52 L0,-30 L-4,-52Z" fill="@" ${SK}/>`,0)+`<path d="M-15,-84 L4,-52 M15,-84 L-4,-52" ${LN}/>`+tone(`<rect x="-7" y="-26" width="14" height="7" fill="@" ${SK}/>`,3))},
+    ...both('arm*_l',cuff(22,26,8,0)+`<path d="M27,-4 L31,4 M33,-4 L37,4 M39,-4 L43,4" ${LN}/>`),
+    ...both('leg*_l',tone(`<path d="M24,-7 L58,-9.5 L58,8.5 L24,6Z" fill="@" ${SK}/>`,0)+`<path d="M30,-7 L36,6 M40,-8 L46,7 M50,-9 L55,8" ${LN}/>`),
+    {bone:'head',layer:'over',svg:UH(RS(sw,.8,-21,-34,`<path d="M-21,-34 Q-40,-36 -54,-18 M-21,-34 Q-36,-26 -42,-6" fill="none" stroke="${INK}" stroke-width="3.4" stroke-linecap="round"/>`)+tone(`<path d="M-22,-38 L22,-38 L22,-30 L-22,-30Z" fill="@" ${SK}/>`,0))},
+  ]},
+  scarf:{th:'ผ้าพันคอ',f:sw=>[
+    {bone:'spine',layer:'back',svg:U(RS(sw,.7,0,-80,tone(`<path d="M0,-80 Q-34,-76 -58,-60 L-71,-66 L-68,-52 L-82,-50 Q-48,-54 0,-70Z" fill="@" ${SK}/>`,1)+tone(`<path d="M0,-87 Q-30,-98 -54,-90 L-64,-101 L-66,-86 L-80,-88 Q-50,-72 0,-77Z" fill="@" ${SK}/>`,0)))},
+    {bone:'spine',layer:'over',svg:U(tone(`<path d="M-8,-90 Q0,-83 8,-90 L7,-75 Q0,-70 -7,-75Z" fill="@" ${SK}/>`,0))},
+  ]},
+  cape:{th:'ผ้าคลุม',f:sw=>[
+    {bone:'spine',layer:'back',svg:U(RS(sw,1,2,-80,tone(`<path d="M5,-84 Q-48,-44 -52,40 Q-30,26 -10,34 Q-10,-30 5,-70Z" fill="@" ${SK}/>`,1)+`<path d="M-8,-66 Q-34,-30 -38,26 M-4,-56 Q-22,-20 -24,28" ${LN}/>`))},
+    {bone:'spine',layer:'over',svg:U(tone(`<path d="M-16,-88 Q0,-80 16,-88 L14,-78 Q0,-72 -14,-78Z" fill="@" ${SK}/>`,0))},
+    ...both('arm*_l',cuff(30,22,9,0)),
+    ...both('leg*_l',greave),
+  ]},
+};
+
+const wingPair=(d,ribs,t)=>{const w=tone(`<path d="${d}" fill="@" ${SK}/>`,t)+`<path d="${ribs}" ${LN}/>`;
+  return UW(`<g transform="rotate(-20) scale(.84)" opacity=".8">${w}</g>${w}`);};
+const WINGS={
+  none:{th:'ไม่มี',f:()=>''},
+  angel:{th:'ปีกนก',f:()=>wingPair('M0,0 Q-36,-66 -100,-62 Q-86,-46 -93,-28 Q-77,-24 -82,-5 Q-66,-3 -69,16 Q-52,15 -52,33 Q-30,30 0,13Z','M-20,-20 Q-54,-34 -86,-44 M-18,-7 Q-48,-12 -76,-13 M-14,6 Q-38,8 -60,10 M-30,-34 Q-60,-52 -90,-56',1)},
+  bat:{th:'ปีกค้างคาว',f:()=>wingPair('M0,0 Q-26,-56 -96,-70 Q-86,-38 -104,-14 Q-84,-20 -72,0 Q-62,-10 -46,13 Q-36,4 -22,22 L0,13Z','M0,2 L-104,-14 M0,4 L-72,0 M0,6 L-46,13 M0,0 Q-40,-40 -96,-70',2)},
+  fairy:{th:'ปีกแมลง',f:()=>wingPair('M0,0 Q-50,-78 -92,-66 Q-104,-40 -60,-14 Q-28,-2 0,6Z M0,6 Q-52,6 -70,26 Q-56,46 -26,30 Q-8,20 0,10Z','M0,2 Q-44,-36 -90,-62 M-4,4 Q-40,-14 -64,-18 M0,8 Q-36,16 -66,28',0)},
+};
+
+const shaft=(a,b)=>`<path d="M${a},0 L${b},0" fill="none" stroke="${INK}" stroke-width="2.6" stroke-linecap="round"/>`;
+const WEAPON={
+  none:{th:'ไม่มี',f:()=>''},
+  katana:{th:'คาตานะ',f:()=>tone(`<path d="M13,-2.6 Q64,-5 116,-13 Q66,3 13,2.6Z" fill="@" ${SK}/>`,0)+`<path d="M18,0 Q60,-1 104,-9" ${LN}/>`+tone(`<rect x="-18" y="-2.8" width="27" height="5.6" rx="1.5" fill="@" ${SK}/>`,2)+tone(`<rect x="9" y="-6.5" width="4" height="13" rx="1.5" fill="@" ${SK}/>`,3)},
+  spear:{th:'หอก',f:()=>shaft(-78,108)+tone(`<path d="M156,0 L114,-17 L122,-4 L104,-2 L104,2 L122,4 L114,17Z" fill="@" ${SK}/>`,2)+`<path d="M108,0 L150,0" ${LN}/>`+tone(`<rect x="94" y="-3.5" width="8" height="7" fill="@" ${SK}/>`,0)},
+  staff:{th:'คทา',f:()=>shaft(-76,94)+`<path d="M94,0 Q98,-14 112,-14 M94,0 Q98,14 112,14" fill="none" stroke="${INK}" stroke-width="2.2" stroke-linecap="round"/>`+tone(`<circle cx="110" cy="0" r="9" fill="@" ${SK}/>`,1)+`<path d="M105,-3 Q110,-7 115,-3" ${LN}/>`},
+  axe:{th:'ขวาน',f:()=>`<g transform="scale(1 -1)">`+shaft(-26,94)+tone(`<path d="M66,-2 Q68,-38 106,-42 Q92,-20 108,3 L88,-3Z" fill="@" ${SK}/>`,2)+`<path d="M74,-8 Q84,-24 100,-36" ${LN}/></g>`},
+  gun:{th:'ปืน',f:()=>tone(`<path d="M-26,-1 L-26,9 L-18,9 L-8,3 L6,3 L8,9 L13,9 L12,3 L30,3 L30,0 L66,0 L66,-4 L-10,-4Z" fill="@" ${SK}/>`,3)+`<path d="M-4,-1.6 L58,-1.8" fill="none" stroke="${PAPER}" stroke-width="1.2" stroke-linecap="round" opacity=".7"/><path d="M60,-4 L60,-7" ${LN}/>`},
+  scythe:{th:'เคียว',f:()=>`<g transform="scale(1 -1)">`+shaft(-46,124)+tone(`<path d="M112,4 Q146,-6 158,-56 Q160,-108 124,-150 Q140,-100 130,-58 Q122,-22 100,-8Z" fill="@" ${SK}/>`,3)+`<path d="M136,-20 Q150,-70 134,-128" fill="none" stroke="${PAPER}" stroke-width="1.6" stroke-linecap="round" opacity=".8"/>`+tone(`<path d="M104,-9 L98,4 L116,6Z" fill="@" ${SK}/>`,3)+`</g>`},
+  great:{th:'ดาบยักษ์',f:()=>tone(`<path d="M13,-12 L116,-12 L136,0 L116,12 L13,12Z" fill="@" ${SK}/>`,1)+`<path d="M20,-5 L112,-5" ${LN}/>`+tone(`<circle cx="26" cy="4" r="4" fill="@" ${SK}/>`,0)+tone(`<rect x="-20" y="-2.6" width="28" height="5.2" rx="1.5" fill="@" ${SK}/>`,3)+tone(`<rect x="8" y="-15" width="5" height="30" rx="1.5" fill="@" ${SK}/>`,3)+tone(`<circle cx="-23" cy="0" r="4" fill="@" ${SK}/>`,0)},
+  bow:{th:'ธนู',f:()=>`<path d="M0,-60 L0,60" ${LN}/><path d="M0,-60 Q42,0 0,60" fill="none" stroke="${INK}" stroke-width="3" stroke-linecap="round"/><path d="M0,-60 q-5,-3 -4,-8 M0,60 q-5,3 -4,8" ${LN}/>`},
+};
+const OFFHAND={
+  none:{th:'ไม่มี',f:()=>''},
+  shield:{th:'โล่',f:()=>tone(`<circle cx="4" cy="0" r="22" fill="@" ${SK}/>`,1)+`<circle cx="4" cy="0" r="16" ${LN}/>`+tone(`<circle cx="4" cy="0" r="6" fill="@" ${SK}/>`,3)},
+  dagger:{th:'มีดสั้น',f:()=>tone(`<path d="M9,-3.5 L40,-3 L50,0 L40,3 L9,3.5Z" fill="@" ${SK}/>`,0)+tone(`<rect x="-10" y="-2.4" width="16" height="4.8" rx="1.2" fill="@" ${SK}/>`,2)+tone(`<rect x="6" y="-6" width="3.4" height="12" rx="1" fill="@" ${SK}/>`,3)},
+};
+
+const WTYPE={none:'fist',katana:'blade',great:'blade',axe:'blade',scythe:'blade',spear:'pole',staff:'magic',bow:'bow',gun:'gun'};
+const wtype=eq=>WTYPE[eq.weapon]||'blade';
+const MUZ={bow:14*GEAR,gun:66*GEAR,staff:112*GEAR};
+const REACH={gun:0,scythe:140*GEAR,great:134*GEAR,none:0,katana:116*GEAR,spear:156*GEAR,staff:119*GEAR,axe:106*GEAR,bow:0};
+function pieces(eq,sw){
+  const P=[];
+  P.push(...OUTFIT[eq.outfit].f(sw));
+  P.push(...HAIR[eq.hair].f(sw));
+  const w=WEAPON[eq.weapon].f(), o=OFFHAND[eq.offhand].f(), g=WINGS[eq.wings].f();
+  if(g)P.push({bone:'wing',layer:'over',svg:g});
+  const gs=x=>`<g transform="scale(${GEAR})">${x}</g>`;
+  if(w)P.push({bone:'handR',layer:'under',svg:gs(w)});
+  if(o)P.push({bone:'handL',layer:eq.offhand==='shield'?'over':'under',svg:gs(o)});
+  return P;
+}
+// ---- figure: ink stick man ----
+const limb=(len,w)=>`<path d="M0,0 L${len},0" fill="none" stroke="${INK}" stroke-width="${w}" stroke-linecap="round"/>`;
+const HEADS={solid:{th:'ทึบ'},ring:{th:'โปร่ง'}}, EYES={on:{th:'มี'},off:{th:'ไม่มี'}};
+const FG=`fill="none" stroke="${INK}" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"`;
+const fingers=a=>`<path d="${a.map(f=>'M'+f.map(q=>q.join(',')).join(' L')).join(' ')}" ${FG}/>`;
+const PALM=tone(`<path d="M-1,-3.1 L8.2,-4.3 Q10.6,0 9.6,4 L-1,3Z" fill="@" ${SK}/>`,3);
+const FISTB=tone(`<path d="M-1,-3.1 L7,-5 Q12.4,-5.6 12.8,-1.2 L12.8,3 Q12.2,6.2 7,5.6 L-1,3Z" fill="@" ${SK}/>`,3)+`<path d="M9.2,-4.8 L9.4,5.2 M12.6,-1.6 L9.3,-1.6 M12.8,.9 L9.4,.9 M12.6,3.3 L9.4,3.3" ${LN}/>`;
+const KN=[[9,-3.6],[9.5,-1.2],[9.6,1.2],[9.3,3.4]], TB=[3,-3.4];
+const THUMB_IN=fingers([[TB,[8.5,-6.4],[12,-4]]]);
+const HANDS={auto:{th:'อัตโนมัติ'},relax:{th:'ผ่อนคลาย'},open:{th:'กางนิ้ว'},fist:{th:'กำหมัด'},point:{th:'ชี้'},peace:{th:'ชูสองนิ้ว'},chop:{th:'สันมือ'},claw:{th:'กรงเล็บ'},grip:{th:'กำด้าม'}};
+const HANDART={
+  relax:fingers([[KN[0],[14,-3.8],[17,-1.4]],[KN[1],[14.6,-1],[17.4,1.5]],[KN[2],[14.2,1.9],[16.5,4.1]],[KN[3],[13,4.3],[14.8,6.3]],[TB,[7,-6.6],[11,-6]]])+PALM,
+  open:fingers([[KN[0],[14,-6.6],[18.5,-8.8]],[KN[1],[15,-2.1],[20.4,-2.8]],[KN[2],[15,2.1],[19.8,3]],[KN[3],[13.5,5.8],[17,8]],[TB,[7,-8.2],[10,-11.4]]])+PALM,
+  fist:FISTB+THUMB_IN,
+  point:FISTB+THUMB_IN+fingers([[[9,-4],[15.5,-4.8],[22,-5]]]),
+  peace:FISTB+THUMB_IN+fingers([[[9,-4],[15,-7.5],[21.5,-10.5]],[[9.6,-1],[16,-.4],[22.5,1.2]]]),
+  chop:tone(`<path d="M-1,-3.1 L9,-4 L20.5,-2.6 Q22.6,0 20.5,2.4 L9.6,4 L-1,3Z" fill="@" ${SK}/>`,3)+`<path d="M9.6,-1.5 L20.4,-.7 M9.7,1 L20.4,.8" ${LN}/>`+fingers([[TB,[8,-6],[11.4,-4.7]]]),
+  claw:fingers([[KN[0],[14,-7.6],[17,-4.4]],[KN[1],[15.8,-3.2],[18.6,.2]],[KN[2],[15.6,2.2],[17.8,5.4]],[KN[3],[13.4,6.6],[14.8,9.8]],[TB,[6.4,-8.8],[10.8,-8.2]]])+PALM,
+  grip:tone(`<path d="M-3.6,-4.7 Q2,-6.7 7.2,-4.7 L7.2,4.7 Q2,6.7 -3.6,4.7Z" fill="@" ${SK}/>`,3)+`<path d="M-.9,-5.4 L-.9,5.4 M1.9,-5.9 L1.9,5.9 M4.6,-5.4 L4.6,5.4" ${LN}/>`,
+};
+function handPose(eq,side,auto){
+  const v=eq['hand'+side]; if(v&&v!=='auto')return v;
+  return eq[side==='R'?'weapon':'offhand']!=='none'?'grip':(auto||'relax');
+}
+function handArt(id,eq,auto){
+  const k=handPose(eq,id==='handR'?'R':'L',auto);
+  // free hands follow the forearm; a gripping hand follows the weapon axis
+  return k==='grip'?HANDART.grip:`<g transform="rotate(${-BMAP[id].rest})">${HANDART[k]}</g>`;
+}
+function baseArt(id,eq,auto){
+  switch(id){
+    case 'root': case 'wing': return '';
+    case 'spine': return `<path d="M0,-2.4 L84,-3.2 L84,3.2 L0,2.4Z" fill="${INK}" ${SK}/>`;
+    case 'head': {const ring=eq.head==='ring', eye=eq.eyes==='off'?'':`<ellipse cx="20" cy="4.6" rx="2.5" ry="1.5" fill="${ring?INK:PAPER}"/><ellipse cx="20" cy="10" rx="2.5" ry="1.5" fill="${ring?INK:PAPER}"/>`;
+      return (ring?`<circle cx="21" cy="0" r="12.8" fill="${PAPER}" stroke="${INK}" stroke-width="2.6"/>`:`<circle cx="21" cy="0" r="14" fill="${INK}" ${SK}/>`)+eye;}
+    case 'handR': case 'handL': return handArt(id,eq,auto);
+    case 'armL_u': case 'armR_u': return limb(54,4.6);
+    case 'armL_l': case 'armR_l': return limb(52,4);
+    case 'legL_u': case 'legR_u': return `<path d="M0,-2.6 L72,-3.3 L72,3.3 L0,2.6Z" fill="${INK}" ${SK}/><ellipse rx="4.6" ry="3" fill="${INK}"/>`;
+    // shin flares into a wide ink wedge, with one thin highlight
+    default: return `<path d="M0,-3.2 C30,-4 56,-7 74,-10 Q77,0 74,9.5 C56,6.5 30,4 0,3.2Z" fill="${INK}" ${SK}/><ellipse rx="5" ry="3.3" fill="${INK}"/>`+
+      `<path d="M44,-2.2 L69,-4.6" fill="none" stroke="${PAPER}" stroke-width="1.5" stroke-linecap="round" opacity=".75"/>`;
+  }
+}
+const T=(w,inner)=>`<g transform="translate(${w.x.toFixed(2)} ${w.y.toFixed(2)}) rotate(${w.r.toFixed(2)})">${inner}</g>`;
+function rigSvg(eq,W,sw,auto){
+  const P=pieces(eq,sw), by=(b,l)=>P.filter(p=>p.bone===b&&p.layer===l).map(p=>p.svg).join('');
+  let out='';
+  // art is drawn at its authored length, then fitted to the bone
+  const fit=(id,x)=>{const b=BMAP[id];return b.art?`<g transform="scale(${(b.len/b.art).toFixed(3)} ${b.sy||1})">${x}</g>`:x;};
+  for(const id of ORDER){const s=by(id,'back'); if(s)out+=T(W[id],fit(id,s));}
+  for(const id of ORDER)out+=T(W[id],fit(id,by(id,'under')+baseArt(id,eq,auto)+by(id,'over')));
+  return out;
+}
+// ---- pencil motion effects ----
+// speed lines: thin strokes that follow the path a moving part swept, fading toward the old end.
+// S = samples {t,bx,by,tx,ty} (a short segment per sample); L = lines {u: position across the segment, s/e: which part of the path, w}
+const WLINES=[.35,.1,.45,.2,.5,.05,.3,.15,.4,0,.1].map((s,i)=>({u:[.3,.36,.47,.52,.6,.69,.73,.82,.88,.95,1][i],s,e:[.9,1,.85,1,.95,1,.9,1,1,1,.97][i],w:[.8,1,.9,1.3,1,1.6,1.1,1.9,1.4,2.3,1.2][i]}));
+const PLINES=[{u:0,s:.2,e:.8,w:1.5},{u:.33,s:0,e:.95,w:2.3},{u:.66,s:.3,e:1,w:1.9},{u:1,s:.1,e:.7,w:1.3}];
+function speedLines(S,now,color,uid,L,thr,dash){
+  const n=S.length; if(n<4)return '';
+  let len=0; for(let i=1;i<n;i++){ if(S[i].t-S[i-1].t>.03)return ''; len+=Math.hypot(S[i].tx-S[i-1].tx,S[i].ty-S[i-1].ty); }
+  const al=Math.max(0,Math.min(1,(len/Math.max(.02,S[n-1].t-S[0].t)-thr)/650)); if(al<.05)return '';
+  const A=S[0], B=S[n-1], f=v=>v.toFixed(1), pt=(q,u)=>f(q.bx+(q.tx-q.bx)*u)+','+f(q.by+(q.ty-q.by)*u);
+  let out=`<defs><linearGradient id="sl${uid}" gradientUnits="userSpaceOnUse" x1="${f(A.tx)}" y1="${f(A.ty)}" x2="${f(B.tx)}" y2="${f(B.ty+.01)}"><stop offset="0" stop-color="${color}" stop-opacity="0"/><stop offset=".45" stop-color="${color}" stop-opacity="${(al*.55).toFixed(2)}"/><stop offset="1" stop-color="${color}" stop-opacity="${al.toFixed(2)}"/></linearGradient></defs>`;
+  for(const l of L){
+    const i0=Math.floor(l.s*(n-1)), i1=Math.ceil(l.e*(n-1)); if(i1-i0<2)continue;
+    let d='M'+pt(S[i0],l.u); for(let i=i0+1;i<=i1;i++)d+=' L'+pt(S[i],l.u);
+    out+=`<path d="${d}" fill="none" stroke="url(#sl${uid})" stroke-width="${l.w}" stroke-linecap="round" stroke-linejoin="round"${dash?` stroke-dasharray="${dash}"`:''}/>`;
+  }
+  return out;
+}
+// turn a path of points into samples for speedLines: a short segment across the direction of travel
+function pointRibbon(P,hw){
+  const out=[]; let nx=0, ny=1;
+  for(let i=0;i<P.length;i++){
+    const a=P[Math.max(0,i-1)], b=P[Math.min(P.length-1,i+1)], dx=b.x-a.x, dy=b.y-a.y, m=Math.hypot(dx,dy);
+    if(m>.3){nx=-dy/m; ny=dx/m;}
+    out.push({t:P[i].t,bx:P[i].x-nx*hw,by:P[i].y-ny*hw,tx:P[i].x+nx*hw,ty:P[i].y+ny*hw});
+  }
+  return out;
+}
+// one brush stroke along a circle: thick in the middle, pointed at both ends
+function brushArc(cx,cy,r,a0,a1,w){
+  const p=a=>[(cx+r*Math.cos(a*Math.PI/180)).toFixed(1),(cy+r*Math.sin(a*Math.PI/180)).toFixed(1)];
+  const th=(a1-a0)*Math.PI/360, c=2*r*Math.sin(th), s2=Math.max(.4,r*(1-Math.cos(th))-w), r2=(c*c/4+s2*s2)/(2*s2);
+  return `M${p(a0)} A${r} ${r} 0 0 1 ${p(a1)} A${r2.toFixed(1)} ${r2.toFixed(1)} 0 0 0 ${p(a0)}Z`;
+}
+const SWIRL=[[19,20,84,3.4],[25,150,52,2.2],[22,252,62,2.8],[30,64,40,1.8],[32,190,72,3.2],[37,318,36,1.6],[28,300,26,1.4],[41,110,30,1.5],[40,238,24,1.2]];
+function swirlSvg(cx,cy,age,alpha,scale){
+  if(alpha<=.02)return '';
+  let d='';
+  SWIRL.forEach(([r,a,len,w],i)=>{const rot=age*(300-i*14)*(i%2?1:.8); d+=brushArc(cx,cy,r*scale,a+rot,a+rot+len,w*scale);});
+  return `<path d="${d}" fill="${INK}" opacity="${alpha.toFixed(2)}"/>`;
+}
+// scribbles on the floor where a foot is planted
+function groundMarks(W){
+  let out='';
+  ['legL_l','legR_l'].forEach((id,k)=>{
+    const w=W[id], r=w.r*Math.PI/180, x=w.x+Math.cos(r)*BMAP[id].len, y=w.y+Math.sin(r)*BMAP[id].len;
+    if(y<GROUND-12)return;
+    const g=GROUND+2, o=k?3:-2;
+    out+=`<path d="M${(x-17+o).toFixed(1)},${g} L${(x+15+o).toFixed(1)},${g-.6} M${(x-9-o).toFixed(1)},${g+2.4} L${(x+24-o).toFixed(1)},${g+2} M${(x-22).toFixed(1)},${g+1.2} L${(x-13).toFixed(1)},${g+1.4} M${(x+2).toFixed(1)},${g+4.2} L${(x+13).toFixed(1)},${g+4}" fill="none" stroke="${INK}" stroke-width="1.2" stroke-linecap="round" opacity=".8"/>`;
+  });
+  return out;
+}
+function dustSvg(D,now){
+  let out='';
+  for(const d of D){const k=(now-d.t)/.45; if(k<0||k>1)continue;
+    let p='';
+    for(const sx of [-1,1])for(let j=0;j<3;j++){
+      const x=d.x+sx*(9+(24+13*j)*k*1.5), y=d.y-2-j*14*k*(1.3-k), l=9+3*j;
+      p+=`M${x.toFixed(1)},${y.toFixed(1)} l${(sx*l).toFixed(1)},${(-j*2.5).toFixed(1)} `;
+    }
+    out+=`<path d="${p}" fill="none" stroke="${INK}" stroke-width="1.6" stroke-linecap="round" opacity="${((1-k)*.85).toFixed(2)}"/>`;}
+  return out;
+}
+const shown=(id,eq)=>id!=='wing'||eq.wings!=='none';
+function overlaySvg(W,sel,color,eq){
+  let out='';
+  for(const id of ORDER){
+    if(!shown(id,eq))continue;
+    const b=BMAP[id], on=id===sel, col=on?'#e2521a':color, L=Math.max(b.len,1);
+    let s;
+    if(id==='root') s=`<path d="M-11,0 L0,-11 L11,0 L0,11Z" fill="${col}" fill-opacity=".3" stroke="${col}" stroke-width="2"/>`;
+    else s=`<path d="M0,0 L${(L*.2).toFixed(1)},-5 L${L},0 L${(L*.2).toFixed(1)},5Z" fill="${col}" fill-opacity="${on?.5:.22}" stroke="${col}" stroke-width="${on?2.2:1.3}" stroke-linejoin="round"/>`;
+    s+=`<circle r="${on?5:3.4}" fill="#fff" stroke="${col}" stroke-width="2"/>`;
+    out+=T(W[id],s);
+  }
+  return out;
+}
+function hitSvg(W,eq,fi){
+  let out='';
+  for(const id of ORDER){
+    if(!shown(id,eq))continue;
+    const b=BMAP[id];
+    const s=id==='root'?`<circle r="15" fill="transparent" data-bone="root" data-f="${fi||0}"><title>${b.th}</title></circle>`
+      :id==='head'?`<circle cx="31" r="24" fill="transparent" data-bone="head" data-f="${fi||0}"><title>${b.th}</title></circle>`
+      :`<path d="M${b.len<10?0:9},0 L${Math.max(b.len,12)},0" stroke="transparent" stroke-width="22" stroke-linecap="round" data-bone="${id}" data-f="${fi||0}"><title>${b.th}</title></path>`;
+    out+=T(W[id],s);
+  }
+  return out;
+}
+const DEFS=`<defs>`+
+  `<pattern id="h1" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(-58)"><path d="M0,2.5 L5,2.5" stroke="${INK}" stroke-width=".8" opacity=".75"/></pattern>`+
+  `<pattern id="h2" width="2.7" height="2.7" patternUnits="userSpaceOnUse" patternTransform="rotate(-52)"><path d="M0,1.35 L2.7,1.35" stroke="${INK}" stroke-width="1.15"/></pattern>`+
+  `<filter id="wA" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency=".045" numOctaves="2" seed="4" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>`+
+  `<filter id="pc" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency=".03" numOctaves="2" seed="19" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.6" xChannelSelector="G" yChannelSelector="R" result="d"/>`+
+    `<feTurbulence type="fractalNoise" baseFrequency="1.2" numOctaves="2" seed="5" result="g"/><feColorMatrix in="g" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  2.4 0 0 0 -.25" result="ga"/><feComposite in="d" in2="ga" operator="in"/></filter>`+
+  `</defs>`;
+function sparkSvg(S,now){
+  let out='';
+  for(const p of S){const k=(now-p.t)/.22; if(k<0||k>1)continue;
+    for(let i=0;i<9;i++){const a=(i*40+p.t*977%40)*Math.PI/180, r0=5+30*k, r1=13+(i%2?46:34)*k;
+      out+=`<path d="M${(p.x+Math.cos(a)*r0).toFixed(1)},${(p.y+Math.sin(a)*r0).toFixed(1)} L${(p.x+Math.cos(a)*r1).toFixed(1)},${(p.y+Math.sin(a)*r1).toFixed(1)}" stroke="${i%2?INK:p.c[1]}" stroke-width="${(2.6*(1-k)+.4).toFixed(1)}" stroke-linecap="round"/>`;}
+    if(p.k)out+=`<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${(5+22*k).toFixed(1)}" fill="none" stroke="${INK}" stroke-width="1.6" opacity="${(1-k).toFixed(2)}"/>`;}
+  return out;
+}
+function hudSvg(v,hp,sel){
+  let out='';
+  [0,1].forEach(i=>{const w=200, x=i?v.x+v.w-20-w:v.x+20, y=v.y+16, f=w*Math.max(0,hp[i])/100;
+    out+=`<rect x="${x}" y="${y}" width="${w}" height="9" rx="2" fill="${PAPER}" stroke="${INK}" stroke-width="1.6"/>`+
+      `<rect x="${i?x+w-f:x}" y="${y}" width="${f.toFixed(1)}" height="9" rx="2" fill="${INK}" opacity=".82"/>`+
+      `<text x="${i?x+w:x}" y="${y+26}" text-anchor="${i?'end':'start'}" font-size="13" font-weight="${sel===i?700:400}" fill="${INK}">ตัวที่ ${i+1}${sel===i?' (ควบคุม)':''}</text>`;});
+  return out;
+}
+// one fighter: F = {eq,pose,px,dir,sw,hand,trail,showBones,sel,idx}
+function figureSvg(F){
+  const pose=F.pose, W=solve(pose), rig=rigSvg(F.eq,W,F.sw||0,F.hand);
+  const lines=rig.replace(/fill="[^"]*"/g,'fill="none"');
+  const px=pose.x.toFixed(2), py=pose.y.toFixed(2);
+  // the filter is anchored to the hips so the pencil wobble travels with the figure instead of boiling
+  const anchored=(f,o,x)=>`<g transform="translate(${px} ${py})"><g filter="url(#${f})" opacity="${o}"><g transform="translate(${-px} ${-py})">${x}</g></g></g>`;
+  return `<g transform="translate(${F.px.toFixed(2)} 0) scale(${F.dir} 1) translate(${-HOME.x} 0)">`+
+    anchored('wA',1,groundMarks(W)+(F.trail||'')+rig)+anchored('pc',.8,lines)+
+    (F.showBones?overlaySvg(W,F.sel,'#1f6feb',F.eq):'')+(F.noHit?'':hitSvg(W,F.eq,F.idx))+`</g>`;
+}
+function sceneSvg(S){
+  const v=S.vb, sh=S.shake||[0,0];
+  return DEFS+`<g transform="translate(${sh[0].toFixed(1)} ${sh[1].toFixed(1)})">`+
+    `<path d="M${v.x+24},${GROUND} L${v.x+v.w-24},${GROUND}" stroke="${INK}" stroke-width="1.4" stroke-dasharray="14 5 3 6" stroke-linecap="round" opacity=".3"/>`+
+    (S.under||'')+S.figs.map(figureSvg).join('')+`<g filter="url(#wA)">${S.dust||''}${S.sparks||''}</g></g>`+(S.hud||'');
+}
+function exportRig(st,pose){
+  const used=[...new Set(Object.values(OUTFIT).flatMap(o=>o.f()).map(p=>p.bone))];
+  return {
+    bones:BONES.map(b=>({name:b.id,parent:b.parent,length:b.len,attachAt:b.at===undefined?1:b.at,offset:[b.ox||0,b.oy||0],restAngle:b.rest})),
+    drawOrder:ORDER,
+    slots:{hair:['head'],wings:['wing'],weapon:['handR'],offhand:['handL'],outfit:used},
+    equipment:{head:st.eq.head,eyes:st.eq.eyes,handR:st.eq.handR,handL:st.eq.handL,hair:st.eq.hair,outfit:st.eq.outfit,wings:st.eq.wings,weapon:st.eq.weapon,offhand:st.eq.offhand,element:st.eq.element},
+    pose:{x:Math.round(pose.x),y:Math.round(pose.y),angles:Object.fromEntries(BONES.map(b=>[b.id,Math.round(norm(pose.a[b.id]))]))},
+    note:'angles are degrees, local to the parent bone; +x runs along the bone, screen y points down; offset is in the parent bone space'
+  };
+}
+/*CORE-END*/
+
+const $=id=>document.getElementById(id), svg=$('svg');
+const VIEW={solo:{x:135,y:130,w:330,h:256},duel:{x:60,y:170,w:480,h:268}}; VIEW.studio=VIEW.solo;
+const EQ0={hair:'none',outfit:'none',wings:'none',weapon:'none',offhand:'none',element:'mono',handR:'auto',handL:'auto',head:'solid',eyes:'on'};
+function mkFighter(i,eq){
+  return {i,eq:Object.assign({},EQ0,eq),pose:mkPose({}),poseName:'idle',anim:'none',loop:true,animT:0,lastKey:-1,
+    // disp = what is on screen: follows the target pose through damped springs (follow-through and settle)
+    disp:mkPose({}),vel:{x:0,y:0,a:Object.fromEntries(BONES.map(b=>[b.id,0]))},
+    pts:{handL:[],handR:[],legL:[],legR:[],head:[]},swOn:false,swT:0,swEnd:-9,
+    sway:0,swayV:0,trail:[],tick:0,autoHand:'relax',unsettled:false,
+    px:HOME.x,pxT:HOME.x,pxV:0,dir:1,hp:100,state:'free',until:0};
+}
+const F=[mkFighter(0,{}),mkFighter(1,{head:'ring',hair:'kasa',outfit:'scarf',weapon:'katana'})];
+const ui={mode:'solo',sel:0,bone:'armR_u',showBones:true,auto:true,flip:false};
+const cur=()=>F[ui.sel], view=()=>VIEW[ui.mode], duel=()=>ui.mode==='duel';
+const STIFF={root:900,spine:900,head:260,wing:150,armR_u:1100,armR_l:1000,handR:900,armL_u:520,armL_l:330,handL:260,legL_u:900,legL_l:800,legR_u:900,legR_l:800};
+const ZETA=.62;
+let clock=0,last=0,raf=0,dragging=false,shakeT=-9,shakeA=6,dust=[],sparks=[],shots=[],stopUntil=0,koT=0,nextT=0,turn=0,duelInit=false;
+const wx=f=>f.px+f.dir*(f.disp.x-HOME.x);
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+const shake=a=>{shakeT=clock;shakeA=a;};
+const clampPx=f=>{}; // no walls: the camera follows the fight instead
+let cam=0;
+const camView=()=>{const v=view(); return {x:v.x+cam,y:v.y,w:v.w,h:v.h};};
+
+const PRESETS={
+  blank:{th:'ตัวเปล่า',eq:{hair:'none',outfit:'none',wings:'none',weapon:'none',offhand:'none'}},
+  knight:{th:'อัศวิน',eq:{hair:'spiky',outfit:'armor',wings:'none',weapon:'spear',offhand:'shield'}},
+  samurai:{th:'ซามูไร',eq:{hair:'pony',outfit:'ninja',wings:'none',weapon:'katana',offhand:'dagger'}},
+  mage:{th:'นักเวท',eq:{hair:'long',outfit:'robe',wings:'fairy',weapon:'staff',offhand:'none',element:'ice'}},
+  angel:{th:'เทวทูต',eq:{hair:'long',outfit:'cape',wings:'angel',weapon:'spear',offhand:'none'}},
+  archer:{th:'นักธนู',eq:{hair:'pony',outfit:'scarf',wings:'none',weapon:'bow',offhand:'none'}},
+  gunner:{th:'มือปืน',eq:{hair:'spiky',outfit:'cape',wings:'none',weapon:'gun',offhand:'none'}},
+  ronin:{th:'โรนิน',eq:{hair:'kasa',outfit:'scarf',wings:'none',weapon:'katana',offhand:'none'}},
+  reaper:{th:'ยมทูต',eq:{hair:'none',outfit:'cape',wings:'bat',weapon:'scythe',offhand:'none',element:'mono'}},
+  random:{th:'สุ่ม'},
+};
+
+const groups=[];
+function chips(host,items,get,set,cls){
+  for(const [k,v] of Object.entries(items)){
+    const b=document.createElement('button'); b.className='chip'+(cls?' '+cls:''); b.textContent=v.th; b.dataset.k=k;
+    b.addEventListener('click',()=>{set(k);kick();}); host.appendChild(b);
+  }
+  host._get=get; groups.push(host);
+}
+const eqChips=(id,table,key,after)=>chips($(id),table,()=>cur().eq[key],k=>{cur().eq[key]=k; if(after)after(k);});
+eqChips('g-head',HEADS,'head'); eqChips('g-eyes',EYES,'eyes'); eqChips('g-hair',HAIR,'hair'); eqChips('g-outfit',OUTFIT,'outfit');
+eqChips('g-wings',WINGS,'wings',k=>{if(k==='none'&&ui.bone==='wing')ui.bone='spine';});
+eqChips('g-weapon',WEAPON,'weapon'); eqChips('g-offhand',OFFHAND,'offhand');
+eqChips('g-handR',HANDS,'handR'); eqChips('g-handL',HANDS,'handL'); eqChips('g-element',ELEMENTS,'element');
+chips($('presets'),PRESETS,()=>null,k=>{
+  const e=cur().eq;
+  if(k==='random'){const p=o=>pick(Object.keys(o)); Object.assign(e,{hair:p(HAIR),outfit:p(OUTFIT),weapon:p(WEAPON),offhand:p(OFFHAND),wings:p(WINGS),element:p(ELEMENTS)});}
+  else Object.assign(e,PRESETS[k].eq);
+});
+chips($('mode'),{solo:{th:'เดี่ยว'},duel:{th:'ต่อสู้ 2 ตัว'},map:{th:'แมพ RPG'},studio:{th:'Pose Studio'}},()=>ui.mode,setMode);
+
+chips($('who'),{0:{th:'ตัวที่ 1'},1:{th:'ตัวที่ 2'}},()=>String(ui.sel),k=>{ui.sel=+k;});
+const poseSet=g=>Object.fromEntries(Object.entries(POSES).filter(([k,v])=>v.g===g));
+for(const [id,g] of [['poses','act'],['posesSit','sit'],['posesShow','show']])chips($(id),poseSet(g),()=>cur().anim==='none'?cur().poseName:null,k=>{
+  const f=cur(); if(duel())ui.auto=false; freeze(f); f.poseName=k; f.pose=mkPose(POSES[k].def);
+});
+chips($('emotes'),{sit:{th:'นั่ง (X)'},lotus:{th:'ขัดสมาธิ'},lie:{th:'นอน'},wave:{th:'โบกมือ'},hype:{th:'ดีใจ'},peace:{th:'ชูสองนิ้ว'},bow:{th:'คำนับ'}},()=>M&&ui.mode==='map'?M.player.emote:null,k=>doEmote(k));
+chips($('anims'),LOOPS,()=>cur().anim,k=>{
+  const f=cur(); if(f.anim===k&&!duel()){freeze(f);return;} play(f,k,true); f.state='free';
+},'go');
+const atkClick=k=>{
+  const f=cur();
+  if(duel()){ if(f.state==='free'||f.state==='approach'||f.anim==='none')startAttack(f,k); }
+  else if(f.anim===k)freeze(f); else play(f,k,true);
+};
+chips($('attacks'),{},()=>cur().anim,atkClick,'go');
+let atkType=null, skType=null;
+function typeChips(){ // the attack list and the map hotbar depend on the weapon in hand
+  const ty=wtype(cur().eq), mk=(host,key,text,fn)=>{const b=document.createElement('button'); b.className='chip go'; b.textContent=text; b.dataset.k=key; b.addEventListener('click',()=>{fn(key);kick();}); host.appendChild(b);};
+  if(ty!==atkType){atkType=ty; const h=$('attacks'); h.querySelectorAll('button').forEach(b=>b.remove()); for(const k of atkList(ty))mk(h,k,ATTACKS[k].th,atkClick);}
+  const pt=wtype(F[0].eq);
+  if(pt!==skType){skType=pt; const h=$('skills'); h.querySelectorAll('button').forEach(b=>b.remove());
+    hotbar(pt).forEach((k,i)=>mk(h,String(i+1),(i+1)+' '+ATTACKS[k].th+(SPCOST[k]&&i?' · SP '+SPCOST[k]:''),useSkill));}
+}
+chips($('reacts'),REACTS,()=>cur().anim,k=>{const f=cur(); play(f,k,false); f.state='react';},'go');
+
+const boneHost=$('bones');
+for(const b of BONES){
+  const el=document.createElement('button'); el.dataset.k=b.id; el.style.paddingLeft=(8+b.d*14)+'px';
+  el.innerHTML=`<span>${b.th}</span><code></code>`;
+  el.addEventListener('click',()=>{ui.bone=b.id;kick();}); boneHost.appendChild(el);
+}
+$('angle').addEventListener('input',e=>{const f=cur(); if(duel())ui.auto=false; if(ui.mode==='studio')studioBind(); else freeze(f); f.pose.a[ui.bone]=+e.target.value; f.poseName=null; snap(f); kick();});
+$('tgBones').addEventListener('click',()=>{ui.showBones=!ui.showBones;kick();});
+$('tgFlip').addEventListener('click',()=>{ui.flip=!ui.flip; F[0].dir=ui.flip?-1:1; kick();});
+$('tgAuto').addEventListener('click',()=>{ui.auto=!ui.auto; if(ui.auto){for(const f of F)if(f.anim==='none'){play(f,'idle',true);f.state='free';} nextT=clock+.3;} kick();});
+$('copy').addEventListener('click',async()=>{
+  const b=$('copy');
+  try{await navigator.clipboard.writeText($('json').value); b.textContent='คัดลอกแล้ว';}
+  catch(err){$('json').focus();$('json').select(); b.textContent='เลือกข้อความแล้ว กด Ctrl+C';}
+  setTimeout(()=>b.textContent='คัดลอก JSON',1600);
+});
+
+function setMode(m){
+  if(m===ui.mode)return; ui.mode=m; F[0].studioHand=null; const v=view();
+  svg.setAttribute('viewBox',`${v.x} ${v.y} ${v.w} ${v.h}`); svg.style.aspectRatio=v.w+'/'+v.h;
+  dust=[];sparks=[];shots=[];koT=0;
+  if(m==='map'){mapEnter(); return;}
+  if(m==='duel'){
+    if(!duelInit){duelInit=true; const e=F[0].eq; if(e.weapon==='none'&&e.outfit==='none'&&e.hair==='none')Object.assign(e,PRESETS.samurai.eq,{offhand:'none'});}
+    ui.auto=true; resetRound();
+  }else{
+    ui.sel=0; const f=F[0]; f.px=f.pxT=HOME.x; f.pxV=0; f.dir=ui.flip?-1:1; f.anim='none'; f.state='free'; f.pose=mkPose({}); f.poseName='idle';
+    if(m==='studio')studioEnter();
+  }
+}
+function resetRound(){
+  koT=0; cam=0; nextT=clock+.6; turn=Math.random()<.5?0:1;
+  F.forEach((f,i)=>{f.hp=100; f.px=f.pxT=i?370:230; f.pxV=0; f.dir=i?-1:1; f.state='free'; play(f,'idle',true); f.trail=[]; for(const k in f.pts)f.pts[k]=[];
+    f.disp.x=HOME.x; f.disp.y=HOME.y; f.vel.x=f.vel.y=0; for(const b of BONES){f.disp.a[b.id]=b.rest; f.vel.a[b.id]=0;}});
+}
+function play(f,name,loop){f.anim=name;f.loop=!!loop;f.animT=0;f.lastKey=-1;f.rate=1;}
+function freeze(f){ // stop the animation, keep what is on screen as the editable pose
+  if(f.anim!=='none'){f.pose=lerpPose(f.disp,f.disp,0); f.anim='none'; f.poseName=null; f.state='free';}
+}
+function snap(f){ // direct edits skip the springs
+  f.disp.x=f.pose.x; f.disp.y=f.pose.y; f.vel.x=f.vel.y=0;
+  for(const b of BONES){f.disp.a[b.id]=f.pose.a[b.id]; f.vel.a[b.id]=0;}
+}
+function spring(x,v,t,k,h,z){const a=k*(t-x)-2*(z||ZETA)*Math.sqrt(k)*v; v+=a*h; return [x+v*h,v];}
+
+// ---- fight logic ----
+function startAttack(f,name){
+  const o=F[1-f.i]; f.dir=o.px>=f.px?1:-1; play(f,name||pick(atkList(wtype(f.eq)))); f.state='attack';
+  if(ui.auto&&o.state==='free'&&Math.random()<.16){play(o,'dodge'); o.state='react';}
+}
+const canBeHit=o=>o.anim!=='ko'&&o.anim!=='victory'&&!(o.anim==='launch'&&o.animT>.3)&&!(o.anim==='dodge'&&o.animT>.06);
+function strike(f,o,hit){ // an attack from f lands on o: blocked, or damage + reaction
+  const y=HOME.y+(hit.t==='low'?-8:-34), x=wx(o)-f.dir*8, c=ELEMENTS[f.eq.element].c;
+  if(o.state==='free'&&hit.t!=='launch'&&Math.random()<.26){
+    play(o,'block'); o.state='react'; o.pxT+=f.dir*10; sparks.push({x:x-f.dir*14,y,t:clock,c,k:1}); shake(3); stopUntil=clock+.05;
+  }else{
+    o.hp=Math.max(0,o.hp-hit.dmg); const ko=o.hp<=0;
+    play(o,ko?'ko':{high:'hitHigh',low:'hitLow',launch:'launch'}[hit.t]); o.state='react';
+    o.pxT+=f.dir*hit.push; sparks.push({x,y,t:clock,c,k:0}); shake(ko?9:6); stopUntil=clock+(ko?.16:.07); // hit-stop
+    if(ko)koT=clock;
+  }
+}
+function spawnShot(f,sh){ // arrow / bullet / spell leaves the weapon
+  const w=solve(f.disp).handR, r=w.r*Math.PI/180, L=MUZ[f.eq.weapon]||8, c=ELEMENTS[f.eq.element].c;
+  const x=f.px+f.dir*(w.x+Math.cos(r)*L-HOME.x), y=sh.kind==='nova'?GROUND-15:Math.min(w.y+Math.sin(r)*L,GROUND-12);
+  shots.push({x,y,vx:f.dir*SHOT[sh.kind].v,kind:sh.kind,f,hit:sh.hit,t:clock,c});
+  if(sh.kind==='bullet'){sparks.push({x:x+f.dir*5,y,t:clock,c,k:0}); shake(2);}
+}
+function onKey(f,P){
+  if(ui.mode==='map'){ if(P.hit)mapHit(f,P.hit); if(P.shoot)mapShoot(f,P.shoot); return; }
+  if(P.thud){dust.push({x:wx(f),y:GROUND,t:clock}); shake(4);}
+  if(P.shoot)spawnShot(f,P.shoot);
+  if(!P.hit)return;
+  if(!duel()){
+    const w=solve(f.disp).legR_l; shake(6);
+    dust.push({x:f.px+f.dir*(w.x+Math.cos(w.r*Math.PI/180)*BMAP.legR_l.len-HOME.x),y:GROUND,t:clock}); return;
+  }
+  const o=F[1-f.i], d=f.dir*(wx(o)-wx(f)), reach=54+(P.hit.kick?24:REACH[f.eq.weapon]);
+  if(d>reach||d<-25||!canBeHit(o))return;
+  strike(f,o,P.hit);
+}
+function endAnim(f){
+  if(ui.mode==='map'){mapEndAnim(f); return;}
+  if(ui.mode==='studio'){studioStopped(); return;}
+  const sh=(TRACKS[f.anim]||{}).shift||0;
+  if(duel()){
+    if(sh){f.px+=f.dir*sh; f.pxT=f.px; clampPx(f); f.disp.x-=sh;}
+    if(f.anim==='ko'){f.animT=animLen('ko')-.02; return;}
+    play(f,koT&&f.hp>0?'victory':'idle',true); f.state='free';
+    nextT=Math.max(nextT,clock+.15+Math.random()*.45);
+  }else{f.anim='none'; f.pose=mkPose({}); f.poseName='idle';}
+}
+function director(){
+  if(koT){ if(clock-koT>3.4)resetRound(); return; }
+  for(const f of F){
+    const o=F[1-f.i];
+    if(f.state==='free'||f.state==='approach')f.dir=o.px>=f.px?1:-1;
+    if(f.state==='approach'){
+      const want=RANGED[wtype(f.eq)]||34+REACH[f.eq.weapon]*.5; f.pxT=o.px-f.dir*want; clampPx(f);
+      if(Math.abs(Math.abs(o.px-f.px)-want)<10||clock>f.until)startAttack(f);
+    }
+  }
+  if(F[0].state==='free'&&F[1].state==='free'&&F[0].anim==='idle'&&F[1].anim==='idle'&&clock>nextT){
+    const f=F[turn]; turn=Math.random()<.72?1-turn:turn; f.state='approach'; f.until=clock+1.4; play(f,'run',true);
+  }
+}
+function stepFighter(f,h){
+  let tgt=f.pose, wind=0;
+  f.autoHand=f.studioHand||(POSES[f.poseName]||{}).hand||'relax';
+  if(f.anim!=='none'){
+    f.animT+=h*(f.rate||1);
+    if(!f.loop&&f.animT>=animLen(f.anim)){const tr=TRACKS[f.anim]; if(tr&&f.lastKey===tr.length-1)onKey(f,tr[tr.length-1]); endAnim(f);} // the last key's hit fires as the move ends
+  }
+  if(f.anim!=='none'){
+    const r=animate(f.anim,f.animT); tgt=r.pose; wind=r.wind; f.autoHand=r.hand;
+    if(r.key!==f.lastKey){ if(f.lastKey>=0&&r.prev)onKey(f,r.prev); else if(f.lastKey>0&&r.key<f.lastKey&&TRACKS[f.anim])onKey(f,TRACKS[f.anim][f.lastKey]); f.lastKey=r.key; }
+  }
+  const d=f.disp, v=f.vel; let e=0;
+  [d.x,v.x]=spring(d.x,v.x,tgt.x,900,h); [d.y,v.y]=spring(d.y,v.y,tgt.y,900,h);
+  e=Math.max(Math.abs(tgt.x-d.x),Math.abs(tgt.y-d.y),Math.abs(v.x)*.02,Math.abs(v.y)*.02);
+  for(const b of BONES){
+    const id=b.id, t=d.a[id]+norm(tgt.a[id]-d.a[id]);
+    [d.a[id],v.a[id]]=spring(d.a[id],v.a[id],t,STIFF[id],h);
+    e=Math.max(e,Math.abs(t-d.a[id]),Math.abs(v.a[id])*.02);
+  }
+  [f.px,f.pxV]=spring(f.px,f.pxV,f.pxT,70,h,1);
+  const sT=Math.max(-45,Math.min(45,wind+(v.x+f.pxV*f.dir)*.05-v.y*.02))+(wind?Math.sin(clock*13)*5:0);
+  [f.sway,f.swayV]=spring(f.sway,f.swayV,sT,90,h); // loose spring: cloth and hair lag behind the body
+  e=Math.max(e,Math.abs(sT-f.sway)*.3,Math.abs(f.swayV)*.01,Math.abs(f.pxT-f.px));
+  f.unsettled=e>.08;
+  // sample the fast-moving parts in world space for the speed lines
+  if(++f.tick&1){
+    const W=solve(d), X=x=>f.px+f.dir*(x-HOME.x), reach=REACH[f.eq.weapon];
+    const end=(id,l)=>{const w=W[id], r=w.r*Math.PI/180; return {t:clock,x:X(w.x+Math.cos(r)*l),y:w.y+Math.sin(r)*l};};
+    if(reach){const w=W.handR, r=w.r*Math.PI/180, cx=Math.cos(r), sy=Math.sin(r);
+      f.trail.push({t:clock,bx:X(w.x+cx*reach*.3),by:w.y+sy*reach*.3,tx:X(w.x+cx*reach),ty:w.y+sy*reach});}
+    else f.pts.handR.push(end('handR',6));
+    f.pts.handL.push(end('handL',6)); f.pts.legL.push(end('legL_l',BMAP.legL_l.len-6)); f.pts.legR.push(end('legR_l',BMAP.legR_l.len-6)); f.pts.head.push(end('head',31));
+  }
+  // swirl around the head while dazed or celebrating
+  const daze=f.anim==='hitHigh'||((f.anim==='launch'||f.anim==='ko')&&f.animT>.42&&f.animT<2.2)||f.anim==='victory';
+  if(daze&&!f.swOn){f.swOn=true;f.swT=clock;} else if(!daze&&f.swOn){f.swOn=false;f.swEnd=clock;}
+}
+const PT={handL:[5,330],handR:[5,330],legL:[7,420],legR:[7,420],head:[14,300]};
+function fxFor(f){
+  const L=X=>HOME.x+f.dir*(X-f.px), col=ELEMENTS[f.eq.element].c[0];
+  let out=speedLines(f.trail.map(q=>({t:q.t,bx:L(q.bx),by:q.by,tx:L(q.tx),ty:q.ty})),clock,col,'w'+f.i,WLINES,480);
+  for(const k in PT)out+=speedLines(pointRibbon(f.pts[k].map(q=>({t:q.t,x:L(q.x),y:q.y})),PT[k][0]),clock,col,k+f.i,PLINES,PT[k][1],'11 7');
+  const a=f.swOn?Math.min(1,(clock-f.swT)/.12):Math.max(0,1-(clock-f.swEnd)/.25);
+  const ct=f.anim==='cast'?.49:f.anim==='burst'?.62:0;
+  if(ct&&f.animT<ct){const w=solve(f.disp).handR, r=w.r*Math.PI/180, m=MUZ[f.eq.weapon]||10; out+=swirlSvg(w.x+Math.cos(r)*m,w.y+Math.sin(r)*m,clock*1.6,Math.min(1,f.animT/.15),.3+f.animT*(f.anim==='burst'?1.1:.7));}
+  if(a>.02){const w=solve(f.disp).head, r=w.r*Math.PI/180; out+=swirlSvg(w.x+Math.cos(r)*31,w.y+Math.sin(r)*31,clock-f.swT,a,f.anim==='victory'?1.7:1.45);}
+  return out;
+}
+const active=()=>duel()?F:[F[0]];
+function draw(){
+  const t=clock-shakeT, A=t<.35?shakeA*Math.exp(-t*14):0;
+  const v=camView(); svg.setAttribute('viewBox',`${v.x.toFixed(1)} ${v.y} ${v.w} ${v.h}`);
+  svg.innerHTML=sceneSvg({vb:v,under:studioGhost(),shake:[A*Math.sin(t*95),A*.7*Math.cos(t*80)],
+    dust:dustSvg(dust,clock)+shots.map(q=>`<g transform="translate(${q.x.toFixed(1)} ${q.y.toFixed(1)}) scale(${q.vx<0?-1:1} 1)">${shotArt(q.kind,q.c,clock-q.t)}</g>`).join(''),sparks:sparkSvg(sparks,clock),hud:duel()?hudSvg(v,[F[0].hp,F[1].hp],ui.sel):'',
+    figs:active().map(f=>({eq:f.eq,pose:f.disp,px:f.px,dir:f.dir,sw:f.sway,hand:f.autoHand,idx:f.i,
+      trail:fxFor(f),showBones:ui.showBones&&f.i===ui.sel,sel:ui.bone}))});
+}
+function loop(now){
+  raf=0; const dt=Math.min(.05,Math.max(0,(now-last)/1000)); last=now;
+  if(ui.mode==='map'){mapFrame(dt); panel(); raf=requestAnimationFrame(loop); return;}
+  if(dragging){clock+=dt; snap(cur()); cur().unsettled=false;}
+  else{
+    if(duel()&&ui.auto&&clock>=stopUntil)director();
+    const n=Math.max(1,Math.round(dt/.004)), h=dt/n;
+    for(let i=0;i<n;i++){clock+=h; if(clock<stopUntil)continue; for(const f of active())stepFighter(f,h);}
+  }
+  if(clock>=stopUntil)for(const q of shots){ q.x+=q.vx*dt;
+    if(duel()){const o=F[1-q.f.i], d=(wx(o)-q.x)*Math.sign(q.vx); if(d<12&&d>-30&&canBeHit(o)){q.done=true; strike(q.f,o,q.hit);} } }
+  shots=shots.filter(q=>!q.done&&clock-q.t<1.3);
+  cam=duel()?cam+((wx(F[0])+wx(F[1]))/2-HOME.x-cam)*Math.min(1,dt*4):0;
+  for(const f of F){f.trail=f.trail.filter(s=>clock-s.t<.15); for(const k in f.pts)f.pts[k]=f.pts[k].filter(s=>clock-s.t<.12);}
+  dust=dust.filter(d=>clock-d.t<.45); sparks=sparks.filter(d=>clock-d.t<.22);
+  draw(); panel();
+  if(duel()||active().some(f=>f.anim!=='none'||f.unsettled||f.swOn||clock-f.swEnd<.3)||dust.length||sparks.length||shots.length||clock-shakeT<.4)raf=requestAnimationFrame(loop);
+  else{F[0].trail=[]; for(const k in F[0].pts)F[0].pts[k]=[];}
+}
+function kick(){ if(!raf){last=performance.now(); raf=requestAnimationFrame(loop);} }
+let lastJson='';
+function panel(){
+  const f=cur(); typeChips();
+  for(const h of groups){const v=h._get(); for(const b of h.querySelectorAll('button'))b.setAttribute('aria-pressed',String(b.dataset.k===v));}
+  for(const b of boneHost.children){
+    b.setAttribute('aria-pressed',String(b.dataset.k===ui.bone));
+    b.hidden=b.dataset.k==='wing'&&f.eq.wings==='none';
+    b.lastChild.textContent=Math.round(norm(f.disp.a[b.dataset.k]))+'°';
+  }
+  const a=Math.round(norm(f.disp.a[ui.bone]));
+  if(document.activeElement!==$('angle')||f.anim!=='none')$('angle').value=a;
+  $('angleOut').textContent=a+'°';
+  $('tgBones').setAttribute('aria-pressed',String(ui.showBones));
+  const map=ui.mode==='map', st=ui.mode==='studio';
+  $('tgFlip').setAttribute('aria-pressed',String(ui.flip)); $('tgFlip').hidden=ui.mode!=='solo'&&!st; $('tgBones').hidden=map;
+  $('rowPose').hidden=$('rowPose2').hidden=$('rowAtk').hidden=$('rowReact').hidden=map||st; $('rowSkill').hidden=$('rowEmote').hidden=!map; $('rowStudio').hidden=!st;
+  document.body.classList.toggle('studio-on',st);
+  $('tgAuto').setAttribute('aria-pressed',String(ui.auto)); $('tgAuto').hidden=!duel();
+  $('who').hidden=!duel();
+  $('editing').textContent=duel()?'กำลังแต่งตัวที่ '+(ui.sel+1):map?'แต่งตัวละครของคุณในแมพ':'';
+  if(st)studioPanel();
+  else if(f.anim==='none'){
+    const j=JSON.stringify(exportRig(f,f.pose),null,1);
+    if(j!==lastJson){lastJson=j;$('json').value=j;}
+  }
+}
+
+// drag to pose
+let drag=null;
+function pt(e,f){
+  const r=svg.getBoundingClientRect(), v=camView();
+  const X=v.x+(e.clientX-r.left)/r.width*v.w, Y=v.y+(e.clientY-r.top)/r.height*v.h;
+  return {x:HOME.x+f.dir*(X-f.px),y:Y};
+}
+svg.addEventListener('pointerdown',e=>{
+  if(ui.mode==='map'){e.preventDefault(); M.down=true; mapPointer(e,true); svg.setPointerCapture(e.pointerId); kick(); return;}
+  const id=e.target.dataset&&e.target.dataset.bone; if(!id)return;
+  e.preventDefault(); ui.sel=+e.target.dataset.f||0; const f=cur();
+  if(duel())ui.auto=false;
+  if(ui.mode==='studio')studioBind(); else{freeze(f); f.pose=lerpPose(f.disp,f.disp,0);} dragging=true; ui.bone=id; f.poseName=null;
+  const p=pt(e,f), W=solve(f.pose);
+  drag=id==='root'?{id,ox:f.pose.x-p.x,oy:f.pose.y-p.y}
+    :{id,a0:f.pose.a[id],s:Math.atan2(p.y-W[id].y,p.x-W[id].x)*180/Math.PI,o:W[id]};
+  svg.setPointerCapture(e.pointerId); kick();
+});
+svg.addEventListener('pointermove',e=>{
+  if(ui.mode==='map'){ if(M.down)mapPointer(e,false); return; }
+  if(!drag)return; const f=cur(), p=pt(e,f);
+  if(drag.id==='root'){f.pose.x=Math.max(HOME.x-140,Math.min(HOME.x+140,p.x+drag.ox)); f.pose.y=Math.max(190,Math.min(340,p.y+drag.oy));}
+  else{const a=Math.atan2(p.y-drag.o.y,p.x-drag.o.x)*180/Math.PI; f.pose.a[drag.id]=norm(drag.a0+a-drag.s);}
+  kick();
+});
+const end=()=>{drag=null;dragging=false;if(M)M.down=false;};
+svg.addEventListener('pointerup',end); svg.addEventListener('pointercancel',end);
+
+// ===== map mode: a Ragnarok-style field (angled top view, upright 2D characters) =====
+VIEW.map={x:0,y:0,w:640,h:400};
+const MP={w:1500,d:1100,zk:.6,S:.42};
+const MOBS={scrib:{th:'ขยุกขยิก',hp:26,exp:8,atk:[2,5],sp:40,h:24},blot:{th:'หยดหมึก',hp:44,exp:14,atk:[4,8],sp:54,h:28},eraser:{th:'ยางลบยักษ์',hp:95,exp:34,atk:[6,10],sp:30,h:38}};
+const skillOf=(a,k)=>{const n=hotbar(wtype(a.f.eq))[k-1]; return n?{anim:n,sp:k>1?SPCOST[n]||0:0}:null;};
+const PATH=[[-40,560],[400,520],[760,600],[1100,480],[1540,520]];
+const pathZ=x=>{for(let i=1;i<PATH.length;i++)if(x<=PATH[i][0]){const a=PATH[i-1],b=PATH[i];return a[1]+(b[1]-a[1])*(x-a[0])/(b[0]-a[0]);}return PATH[PATH.length-1][1];};
+const POND={x:1060,z:840,rx:150,rz:92};
+const inPond=(x,z,m)=>{const dx=(x-POND.x)/(POND.rx+m),dz=(z-POND.z)/(POND.rz+m);return dx*dx+dz*dz<1;};
+let M=null;
+function rng(seed){return()=>{seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+const LNK=`fill="none" stroke="${INK}" stroke-linecap="round" stroke-linejoin="round"`;
+function treeArt(R){
+  const k=.85+R()*.5, c=[[-13,-42,16],[12,-44,15],[0,-60,18],[-2,-46,14]];
+  let o=`<ellipse cx="2" cy="0" rx="${20*k}" ry="${5*k}" fill="${INK}" opacity=".13"/>`+
+    `<path d="M${-4*k},0 L${-3*k},${-30*k} M${4*k},0 L${3*k},${-30*k} M${-1*k},-3 L0,${-24*k} M${-3*k},${-18*k} l${-7*k},${-8*k}" ${LNK} stroke-width="1.4"/>`;
+  for(const [x,y,r] of c){const j=()=>(R()-.5)*3;
+    o+=`<circle cx="${(x*k+j()).toFixed(1)}" cy="${(y*k+j()).toFixed(1)}" r="${(r*k).toFixed(1)}" fill="${PAPER}" stroke="${INK}" stroke-width="1.4"/>`;}
+  o+=`<path d="M${-22*k},${-36*k} a${17*k},${17*k} 0 0 0 ${20*k},${10*k} a${15*k},${15*k} 0 0 0 ${20*k},${-4*k} l0,${-8*k} q${-20*k},${6*k} ${-40*k},${2*k}Z" fill="url(#h1)"/>`+
+     `<path d="M${-8*k},${-58*k} q${5*k},${-5*k} ${10*k},0 M${6*k},${-48*k} q${5*k},${-4*k} ${9*k},1 M${-16*k},${-46*k} q${4*k},${-4*k} ${8*k},0" ${LNK} stroke-width="1"/>`;
+  return o;
+}
+function mapInit(){
+  const R=rng(11), obs=[], trees=[], start={x:200,z:pathZ(200)};
+  const ok=(x,z,r)=>x>50&&x<MP.w-50&&z>70&&z<MP.d-40&&!inPond(x,z,r+14)&&Math.abs(z-pathZ(x))>44+r&&Math.hypot(x-start.x,z-start.z)>100&&obs.every(o=>Math.hypot(o.x-x,o.z-z)>o.r+r+30);
+  const spot=r=>{for(let i=0;i<200;i++){const x=R()*MP.w,z=R()*MP.d; if(ok(x,z,r))return {x,z};} return {x:300,z:300};};
+  let g='';
+  // ground: border, cell grid, road, pond
+  g+=`<rect x="-80" y="-80" width="${MP.w+160}" height="${MP.d*MP.zk+160}" fill="url(#h1)" opacity=".55"/><rect x="0" y="0" width="${MP.w}" height="${MP.d*MP.zk}" fill="${PAPER}" stroke="${INK}" stroke-width="2.2"/>`;
+  let grid=''; for(let x=40;x<MP.w;x+=40)grid+=`M${x},0 L${x},${MP.d*MP.zk} `; for(let z=40;z<MP.d;z+=40)grid+=`M0,${z*MP.zk} L${MP.w},${z*MP.zk} `;
+  g+=`<path d="${grid}" fill="none" stroke="${INK}" stroke-width=".7" opacity=".07"/>`;
+  const pd='M'+PATH.map(([x,z])=>x+','+(z*MP.zk).toFixed(1)).join(' L');
+  g+=`<path d="${pd}" ${LNK} stroke-width="33" opacity=".3"/><path d="${pd}" fill="none" stroke="#e7e6e3" stroke-width="30.5" stroke-linejoin="round"/>`;
+  let peb=''; for(let i=0;i<70;i++){const x=R()*MP.w, y=(pathZ(x)+(R()-.5)*38)*MP.zk; peb+=`M${x.toFixed(1)},${y.toFixed(1)} l${(3+R()*5).toFixed(1)},0 `;}
+  g+=`<path d="${peb}" ${LNK} stroke-width="1.1" opacity=".45"/>`;
+  const py=POND.z*MP.zk, pry=POND.rz*MP.zk;
+  g+=`<ellipse cx="${POND.x}" cy="${py}" rx="${POND.rx}" ry="${pry}" fill="${PAPER}" stroke="${INK}" stroke-width="1.8"/><ellipse cx="${POND.x}" cy="${py}" rx="${POND.rx}" ry="${pry}" fill="url(#h1)"/>`+
+     `<path d="M${POND.x-80},${py-12} q20,-7 40,0 M${POND.x+10},${py+14} q24,-8 48,0 M${POND.x-40},${py+26} q16,-6 32,0 M${POND.x+40},${py-24} q14,-5 28,0" ${LNK} stroke-width="1.2" opacity=".7"/>`;
+  // signpost by the start
+  const sx=start.x-70, sy=(start.z-60)*MP.zk;
+  g+=`<path d="M${sx},${sy} L${sx},${sy-30}" ${LNK} stroke-width="2.4"/><rect x="${sx-34}" y="${sy-44}" width="68" height="18" rx="2" fill="${PAPER}" stroke="${INK}" stroke-width="1.5"/><text x="${sx}" y="${sy-31}" text-anchor="middle" font-size="11" fill="${INK}">ทุ่งดินสอ</text>`;
+  obs.push({x:sx,z:start.z-60,r:8});
+  for(let i=0;i<26;i++){const p=spot(16); obs.push({x:p.x,z:p.z,r:14}); trees.push({x:p.x,z:p.z,svg:treeArt(R)});}
+  for(let i=0;i<18;i++){const p=spot(12), k=.7+R()*.7; obs.push({x:p.x,z:p.z,r:11*k});
+    g+=`<g transform="translate(${p.x.toFixed(1)} ${(p.z*MP.zk).toFixed(1)}) scale(${k.toFixed(2)})"><path d="M-13,2 L-10,-9 L-2,-14 L9,-10 L14,-1 L9,4 L-8,4Z" fill="${PAPER}" stroke="${INK}" stroke-width="1.5" stroke-linejoin="round"/><path d="M-13,2 L-10,-9 L-2,-14 L-1,4 L-8,4Z" fill="url(#h2)" opacity=".8"/><path d="M-2,-14 L1,-4 L9,-10 M1,-4 L-1,4" ${LNK} stroke-width="1"/></g>`;}
+  let tuft='', fl=''; 
+  for(let i=0;i<230;i++){const x=R()*MP.w, z=R()*MP.d; if(Math.abs(z-pathZ(x))<24||inPond(x,z,4))continue; const y=z*MP.zk;
+    tuft+=`M${x.toFixed(1)},${y.toFixed(1)} l-3,-6 M${x.toFixed(1)},${y.toFixed(1)} l0,-8 M${x.toFixed(1)},${y.toFixed(1)} l3.5,-6 `;
+    if(i%6===0)fl+=`<circle cx="${(x+9).toFixed(1)}" cy="${(y-3).toFixed(1)}" r="2.2" fill="${PAPER}" stroke="${INK}" stroke-width="1"/>`;}
+  g+=`<path d="${tuft}" ${LNK} stroke-width="1" opacity=".5"/>${fl}`;
+  const mobs=[], kinds=['scrib','scrib','scrib','blot','blot','eraser'];
+  for(let i=0;i<17;i++){let p; do{p=spot(14);}while(Math.hypot(p.x-start.x,p.z-start.z)<220);
+    const kind=kinds[i%kinds.length]; mobs.push({kind,x:p.x,z:p.z,hx:p.x,hz:p.z,hp:MOBS[kind].hp,dir:R()<.5?1:-1,t:R()*9,dest:null,until:0,aggro:null,nextAtk:0,hurtT:-9,lungeT:-9,dead:false,deadT:0,moving:false});}
+  const mk=(f,name,x,z,bot)=>({f,name,x,z,emote:null,dest:null,target:null,queued:null,swing:null,dead:false,reviveAt:0,hp:100,maxHp:100,sp:40,maxSp:40,lv:1,exp:0,atk:9,nextAtk:0,bot,think:0,say:null,sayT:-9,luT:-9,hurtT:-9});
+  const b1=mkFighter(2,Object.assign({},PRESETS.knight.eq,{head:'ring'})), b2=mkFighter(3,PRESETS.mage.eq);
+  const actors=[mk(F[0],'คุณ',start.x,start.z,false),mk(b1,'อัศวินพเนจร',520,430,true),mk(b2,'แม่มดฝึกหัด',340,700,true)];
+  actors[1].lv=7; actors[2].lv=4; actors[1].atk=14; actors[2].atk=11;
+  M={ground:g,obs,trees,mobs,actors,player:actors[0],start,floats:[],shots:[],cam:{x:0,y:0},down:false,mark:null,
+     portals:[{x:1440,z:pathZ(1440),to:{x:150,z:pathZ(150)}},{x:60,z:pathZ(60),to:{x:1350,z:pathZ(1350)}}]};
+}
+function mapEnter(){
+  if(!M)mapInit();
+  ui.sel=0; svg.innerHTML=DEFS+'<g id="mg"></g><g id="md"></g>';
+  M.mg=$('mg'); M.md=$('md'); M.mg.innerHTML=M.ground;
+  for(const a of M.actors){const f=a.f; f.px=f.pxT=0; f.pxV=0; f.state='free'; f.trail=[]; a.emote=null; play(f,a.dead?'ko':'idle',!a.dead);}
+  M.player.f.dir=1;
+}
+const mapFree=(x,z)=>x>20&&x<MP.w-20&&z>34&&z<MP.d-20&&!inPond(x,z,6)&&M.obs.every(o=>Math.hypot(o.x-x,o.z-z)>o.r+7);
+function mapMove(o,tx,tz,sp,dt){
+  const dx=tx-o.x, dz=tz-o.z, d=Math.hypot(dx,dz); if(d<3)return true;
+  const st=Math.min(d,sp*dt), nx=o.x+dx/d*st, nz=o.z+dz/d*st;
+  if(mapFree(nx,nz)){o.x=nx;o.z=nz;}
+  else if(mapFree(nx+(dz>0?-1:1)*st*.9,o.z)){o.x=nx+(dz>0?-1:1)*st*.9;}   // slide around trees and rocks
+  else if(mapFree(o.x,nz+(dx>0?1:-1)*st*.9)){o.z=nz+(dx>0?1:-1)*st*.9;}
+  else if(mapFree(nx,o.z))o.x=nx; else if(mapFree(o.x,nz))o.z=nz; else return true;
+  return false;
+}
+const reachOf=a=>RANGED[wtype(a.f.eq)]||24+REACH[a.f.eq.weapon]*MP.S*.9;
+const floatTxt=(x,z,h,txt,kind)=>M.floats.push({x:x+(Math.random()-.5)*14,z,h,txt,kind,t:clock});
+function startSwing(a,name){
+  const f=a.f; if(a.target)f.dir=a.target.x>=a.x?1:-1;
+  play(f,name,false); f.rate=name==='slash'?1.9:name===ATKSET[wtype(f.eq)][0]?1.6:1.45; f.state='attack'; a.swing=name;
+}
+function useSkill(k){
+  const a=M&&M.player, sk=a&&skillOf(a,+k); if(!a||!sk||a.dead||ui.mode!=='map')return;
+  if(a.sp<sk.sp){floatTxt(a.x,a.z,62,'SP ไม่พอ','info'); return;}
+  if(!a.target||a.target.dead){let best=null,bd=170; for(const m of M.mobs){if(m.dead)continue; const d=Math.hypot(m.x-a.x,m.z-a.z); if(d<bd){bd=d;best=m;}} a.target=best;}
+  a.queued=sk; a.dest=null;
+  if(!a.target&&a.f.state==='free'){a.sp-=sk.sp; a.queued=null; startSwing(a,sk.anim);}
+}
+function mapHit(f,hit){
+  const a=M.actors.find(q=>q.f===f); if(!a)return;
+  const range=reachOf(a)+18, aoe=a.swing==='flip'; let cands=[];
+  for(const m of M.mobs){ if(m.dead)continue; const dx=m.x-a.x, dz=m.z-a.z;
+    if(aoe?Math.hypot(dx,dz)<range+34:(f.dir*dx>-10&&f.dir*dx<range&&Math.abs(dz)<26))cands.push(m); }
+  if(a.swing===ATKSET[wtype(f.eq)][0]&&cands.length>1)cands=[cands.includes(a.target)?a.target:cands[0]];
+  for(const m of cands)mapDamage(a,m,hit,f.dir);
+  if(cands.length&&a===M.player){shake(2.5); stopUntil=clock+.035;}
+}
+function mapDamage(a,m,hit,dir){
+  if(m.dead)return; const f=a.f, crit=Math.random()<.14, dmg=Math.round((a.atk+a.lv*2)*hit.dmg/10*(.85+Math.random()*.3)*(crit?1.8:1));
+  m.hp-=dmg; m.hurtT=clock; m.aggro=a; floatTxt(m.x,m.z,MOBS[m.kind].h+12,dmg+(crit?'!':''),crit?'crit':'dmg');
+  const kx=m.x+dir*hit.push*.3; if(mapFree(kx,m.z))m.x=kx;
+  sparks.push({x:m.x,z:m.z,h:MOBS[m.kind].h*.6,t:clock,c:ELEMENTS[f.eq.element].c,k:0});
+  if(m.hp<=0){m.dead=true; m.deadT=clock; m.aggro=null; if(a.target===m)a.target=null; gainExp(a,MOBS[m.kind].exp);}
+}
+function mapShoot(f,sh){
+  const a=M.actors.find(q=>q.f===f); if(!a)return; const m=a.target&&!a.target.dead?a.target:null;
+  M.shots.push({x:a.x+f.dir*12,z:a.z,h:sh.kind==='nova'?8:20,m,dir:f.dir,ang:0,kind:sh.kind,a,hit:sh.hit,t:clock,c:ELEMENTS[f.eq.element].c});
+}
+function shotStep(q,dt){
+  const v=SHOT[q.kind].v*.72; let tx=q.x+q.dir*100, tz=q.z, hit=null;
+  if(q.m&&!q.m.dead){tx=q.m.x; tz=q.m.z;}
+  const dx=tx-q.x, dz=tz-q.z, d=Math.hypot(dx,dz)||1, st=Math.min(d,v*dt);
+  q.x+=dx/d*st; q.z+=dz/d*st; q.ang=Math.atan2(dz*MP.zk,dx)*180/Math.PI;
+  if(q.m&&!q.m.dead){ if(d<12)hit=q.m; }
+  else for(const m of M.mobs)if(!m.dead&&Math.abs(m.x-q.x)<14&&Math.abs(m.z-q.z)<18){hit=m;break;}
+  if(hit){
+    if(q.kind==='nova'){for(const m of M.mobs)if(Math.hypot(m.x-hit.x,m.z-hit.z)<64)mapDamage(q.a,m,q.hit,q.dir); shake(4);}
+    else mapDamage(q.a,hit,q.hit,q.dir);
+    q.done=true;
+  }
+}
+function gainExp(a,e){
+  a.exp+=e; if(a===M.player)floatTxt(a.x,a.z,70,'+'+e+' EXP','info');
+  while(a.exp>=a.lv*40){a.exp-=a.lv*40; a.lv++; a.maxHp+=12; a.maxSp+=4; a.atk+=2; a.hp=a.maxHp; a.sp=a.maxSp; a.luT=clock; floatTxt(a.x,a.z,84,'LEVEL UP!','lvl');}
+}
+function hurtActor(a,d){
+  if(a.dead)return; a.hp-=d; a.hurtT=clock; floatTxt(a.x,a.z,64,'-'+d,'hurt');
+  const f=a.f;
+  if(a.hp<=0){a.hp=0; a.dead=true; a.reviveAt=clock+3.6; a.target=null; a.dest=null; a.queued=null; play(f,'ko',false); f.state='react';
+    for(const m of M.mobs)if(m.aggro===a)m.aggro=null; if(a===M.player)floatTxt(a.x,a.z,84,'ล้มแล้ว…','lvl'); return;}
+  if(a.emote)setEmote(a,null);
+  if(f.state==='free'&&(f.anim==='idle'||f.anim==='run')&&!a.dest){play(f,'hitHigh',false); f.rate=1.5; f.state='react';}
+  if(a.bot&&!a.target)a.think=0;
+}
+function setEmote(a,k){
+  const f=a.f; a.emote=k;
+  if(!k){ if(f.state==='free'&&f.anim!=='run')play(f,'idle',true); return; }
+  if(TRACKS[k]||k==='wave'||k==='hype')play(f,k,true); else {f.anim='none'; f.pose=mkPose(POSES[k].def); f.poseName=k;}
+}
+function doEmote(k){
+  const a=M&&M.player; if(!a||a.dead||ui.mode!=='map'||a.f.state!=='free')return;
+  a.dest=null; a.target=null; a.queued=null; setEmote(a,a.emote===k?null:k);
+}
+function mapEndAnim(f){
+  const a=M.actors.find(q=>q.f===f);
+  if(a&&a.dead){f.animT=animLen('ko')-.05; return;}
+  play(f,'idle',true); f.state='free'; if(a){a.swing=null; a.nextAtk=clock+.1;}
+}
+function actorStep(a,dt){
+  const f=a.f;
+  if(a.dead){ if(clock>a.reviveAt){a.dead=false; a.hp=a.maxHp; a.sp=a.maxSp; if(!a.bot){a.x=M.start.x; a.z=M.start.z;} a.luT=clock; play(f,'idle',true); f.state='free';} return; }
+  const rest=a.emote&&POSES[a.emote]&&POSES[a.emote].g==='sit'?3:1; // sitting down recovers faster
+  a.sp=Math.min(a.maxSp,a.sp+2.2*rest*dt); if(clock-a.hurtT>4)a.hp=Math.min(a.maxHp,a.hp+2.5*rest*dt);
+  if(a.bot&&clock>a.think){
+    a.think=clock+1.5+Math.random()*3;
+    if(!a.target){
+      let best=M.mobs.find(m=>m.aggro===a&&!m.dead)||null, bd=250;
+      if(!best&&Math.random()<.6)for(const m of M.mobs){if(m.dead)continue; const d=Math.hypot(m.x-a.x,m.z-a.z); if(d<bd){bd=d;best=m;}}
+      if(best)a.target=best; else if(Math.random()<.25)setEmote(a,pick(['sit','lotus','wave','sitknee'])); else a.dest={x:Math.max(60,Math.min(MP.w-60,a.x+(Math.random()-.5)*380)),z:Math.max(80,Math.min(MP.d-60,a.z+(Math.random()-.5)*300))};
+    }
+    if(Math.random()<.13){a.say=pick(['หาปาร์ตี้ครับ','ขายยางลบถูก ๆ จ้า','ใครเห็นไส้ดินสอผมบ้าง','เก็บเลเวลกันมั้ย','ง่วงแล้ว…']); a.sayT=clock;}
+  }
+  if(f.state!=='free')return;
+  if(a.emote&&(a.target||a.dest))setEmote(a,null);
+  let goal=null;
+  if(a.target&&a.target.dead)a.target=null;
+  if(a.target){
+    const m=a.target, r=reachOf(a), side=a.x<=m.x?-1:1, dx=Math.abs(m.x-a.x), dz=Math.abs(m.z-a.z), far=RANGED[wtype(f.eq)], d=Math.hypot(dx,dz);
+    if(far?(d<=r&&dx>14):(dx<=r&&dx>12&&dz<16)){
+      f.dir=m.x>=a.x?1:-1;
+      if(f.anim==='run')play(f,'idle',true);
+      if(clock>a.nextAtk){const q=a.queued||(a.bot&&a.sp>20&&Math.random()<.25?skillOf(a,pick([2,3])):null);
+        if(q&&a.sp>=q.sp){a.sp-=q.sp; a.queued=null; startSwing(a,q.anim);} else {a.queued=null; startSwing(a,ATKSET[wtype(f.eq)][0]);}}
+      return;
+    }
+    goal=!far?{x:m.x+side*r*.72,z:m.z+2}:dx<=14?{x:m.x+side*46,z:a.z}:{x:m.x+(a.x-m.x)/d*r*.82,z:m.z+(a.z-m.z)/d*r*.82};
+  }else if(a.dest)goal=a.dest;
+  if(goal){
+    const ox=a.x; const done=mapMove(a,goal.x,goal.z,a.bot?120:165,dt);
+    if(Math.abs(a.x-ox)>.2)f.dir=a.x>ox?1:-1;
+    if(f.anim!=='run')play(f,'run',true);
+    if(done){ if(!a.target)a.dest=null; else if(Math.hypot(goal.x-a.x,goal.z-a.z)>8)a.target=null; play(f,'idle',true); }
+  }else if(f.anim==='run')play(f,'idle',true);
+}
+function mobStep(m,dt){
+  const K=MOBS[m.kind]; m.t+=dt;
+  if(m.dead){ if(clock-m.deadT>7){m.dead=false; m.hp=K.hp; m.x=m.hx; m.z=m.hz; m.aggro=null;} return; }
+  m.moving=false;
+  if(m.aggro&&(m.aggro.dead||Math.hypot(m.aggro.x-m.x,m.aggro.z-m.z)>340))m.aggro=null;
+  if(m.aggro){
+    const a=m.aggro, d=Math.hypot(a.x-m.x,a.z-m.z); m.dir=a.x>=m.x?1:-1;
+    if(d>30){mapMove(m,a.x-m.dir*24,a.z,K.sp,dt); m.moving=true;}
+    else if(clock>m.nextAtk){m.nextAtk=clock+1.25; m.lungeT=clock; hurtActor(a,K.atk[0]+Math.floor(Math.random()*(K.atk[1]-K.atk[0]+1)));}
+  }else{
+    if(!m.dest||clock>m.until){m.dest=Math.random()<.6?{x:m.hx+(Math.random()-.5)*150,z:m.hz+(Math.random()-.5)*110}:null; m.until=clock+2+Math.random()*4;}
+    if(m.dest){const ox=m.x; if(mapMove(m,m.dest.x,m.dest.z,K.sp*.45,dt))m.dest=null; else{m.moving=true; if(Math.abs(m.x-ox)>.05)m.dir=m.x>ox?1:-1;}}
+  }
+}
+function mapPointer(e,first){
+  const r=svg.getBoundingClientRect(), X=(e.clientX-r.left)/r.width*640, Y=(e.clientY-r.top)/r.height*400, a=M.player;
+  if(a.dead)return;
+  if(first)for(const m of M.mobs){ if(m.dead)continue; const sx=m.x-M.cam.x, sy=m.z*MP.zk-M.cam.y;
+    if(Math.abs(X-sx)<18&&Y>sy-MOBS[m.kind].h-6&&Y<sy+8){a.target=m; a.dest=null; a.queued=null; return;} }
+  a.target=null; a.queued=null;
+  a.dest={x:Math.max(24,Math.min(MP.w-24,X+M.cam.x)),z:Math.max(38,Math.min(MP.d-24,(Y+M.cam.y)/MP.zk))};
+  M.mark={x:a.dest.x,z:a.dest.z,t:clock};
+}
+function mobSvg(m){
+  const K=MOBS[m.kind], hop=m.moving?Math.abs(Math.sin(m.t*7))*7:Math.abs(Math.sin(m.t*2.2))*1.5, sq=m.moving?Math.sin(m.t*14)*.08:Math.sin(m.t*2.2)*.04;
+  const hurt=clock-m.hurtT<.16?Math.sin(clock*90)*3:0, lunge=clock-m.lungeT<.2?Math.sin((clock-m.lungeT)/.2*Math.PI)*12:0;
+  let body;
+  if(m.kind==='scrib')body=`<ellipse cx="0" cy="-11" rx="12.5" ry="10.5" fill="${PAPER}" stroke="${INK}" stroke-width="1.6"/><path d="M-9,-12 q4,-10 10,-2 q4,6 -4,8 q-9,2 -8,-6 q2,-8 12,-4 q6,4 0,10 q-8,5 -12,-2 q-3,-9 8,-12" ${LNK} stroke-width="1"/><circle cx="3.5" cy="-13" r="1.7" fill="${INK}"/><circle cx="8.5" cy="-12.5" r="1.7" fill="${INK}"/>`;
+  else if(m.kind==='blot')body=`<path d="M0,-27 q3,6 9,5 q8,-2 6,6 q8,1 6,8 q-1,8 -9,7 l2,3 l-6,-2 q-8,3 -14,-1 l-5,3 l1,-5 q-7,-3 -5,-10 q-5,-6 3,-9 q-2,-8 6,-6 q3,-1 6,-9z" fill="${INK}" stroke="${INK}" stroke-width="1.4" stroke-linejoin="round"/><circle cx="2" cy="-12" r="2.8" fill="${PAPER}"/><circle cx="9" cy="-12" r="2.8" fill="${PAPER}"/><circle cx="3" cy="-12" r="1.1" fill="${INK}"/><circle cx="10" cy="-12" r="1.1" fill="${INK}"/><path d="M-9,-14 q1,-5 5,-7" fill="none" stroke="${PAPER}" stroke-width="1.3" stroke-linecap="round" opacity=".7"/>`;
+  else body=`<path d="M-9,-7 L-9,0 M7,-7 L7,0" ${LNK} stroke-width="4.2"/><path d="M-17,-32 L13,-32 L13,-7 L-17,-7Z" fill="${PAPER}" stroke="${INK}" stroke-width="1.6" stroke-linejoin="round"/><path d="M-17,-32 L-11,-38 L19,-38 L13,-32Z" fill="${PAPER}" stroke="${INK}" stroke-width="1.6" stroke-linejoin="round"/><path d="M-17,-32 L-11,-38 L19,-38 L13,-32Z" fill="url(#h1)"/><path d="M13,-32 L19,-38 L19,-13 L13,-7Z" fill="${INK}" stroke="${INK}" stroke-width="1.6" stroke-linejoin="round"/><path d="M-17,-18 L13,-18" ${LNK} stroke-width="1.2"/><path d="M-8,-27 l5,2 M7,-27 l-5,2" ${LNK} stroke-width="1.6"/><circle cx="-5" cy="-23" r="1.5" fill="${INK}"/><circle cx="4" cy="-23" r="1.5" fill="${INK}"/>`;
+  let sy=1-sq, sx=1+sq, op=1;
+  if(m.dead){const k=Math.min(1,(clock-m.deadT)/.5); sy=1-.85*k; sx=1+.5*k; op=1-k; if(op<=0)return '';}
+  return `<ellipse cx="0" cy="0" rx="13" ry="4" fill="${INK}" opacity="${(.16*op).toFixed(2)}"/><g opacity="${op.toFixed(2)}" transform="translate(${(hurt+lunge*m.dir).toFixed(1)} ${(-hop).toFixed(1)}) scale(${(m.dir*sx).toFixed(3)} ${sy.toFixed(3)})">${body}</g>`;
+}
+const bar=(x,y,w,h,k,op)=>`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w}" height="${h}" rx="1.2" fill="${PAPER}" stroke="${INK}" stroke-width="1"/><rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${(w*Math.max(0,Math.min(1,k))).toFixed(1)}" height="${h}" rx="1.2" fill="${INK}" opacity="${op}"/>`;
+const TXT=`paint-order="stroke" stroke="${PAPER}" stroke-width="3" stroke-linejoin="round" fill="${INK}"`;
+function mapDraw(){
+  const p=M.player, c=M.cam, t=clock-shakeT, A=t<.35?shakeA*Math.exp(-t*14):0, shx=A*Math.sin(t*95), shy=A*.7*Math.cos(t*80);
+  c.x=Math.max(-30,Math.min(MP.w-610,p.x-320)); c.y=Math.max(-70,Math.min(MP.d*MP.zk-370,p.z*MP.zk-240));
+  const ox=c.x-shx, oy=c.y-shy, P=(x,z)=>[x-ox,z*MP.zk-oy];
+  M.mg.setAttribute('transform',`translate(${(-ox).toFixed(1)} ${(-oy).toFixed(1)})`);
+  let out='';
+  if(M.mark&&clock-M.mark.t<.6){const [x,y]=P(Math.round(M.mark.x/40)*40+20-20,Math.round(M.mark.z/40)*40), k=(clock-M.mark.t)/.6;
+    out+=`<rect x="${(x-20).toFixed(1)}" y="${(y-12).toFixed(1)}" width="40" height="24" fill="none" stroke="${INK}" stroke-width="1.6" stroke-dasharray="5 4" opacity="${(1-k).toFixed(2)}"/>`;}
+  for(const q of M.portals){const [x,y]=P(q.x,q.z);
+    out+=`<g transform="translate(${x.toFixed(1)} ${y.toFixed(1)}) scale(1 .45)">${swirlSvg(0,0,clock*.6,1,1.25)}</g><text x="${x.toFixed(1)}" y="${(y+24).toFixed(1)}" text-anchor="middle" font-size="10" ${TXT}>วาร์ป</text>`;}
+  if(p.target&&!p.target.dead){const [x,y]=P(p.target.x,p.target.z);
+    out+=`<ellipse cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" rx="19" ry="7" fill="none" stroke="${INK}" stroke-width="1.8" stroke-dasharray="6 4" stroke-dashoffset="${(clock*30).toFixed(1)}"/>`;}
+  const D=[];
+  for(const tr of M.trees){const [x,y]=P(tr.x,tr.z); if(x>-60&&x<700&&y>-10&&y<520)D.push([tr.z,`<g transform="translate(${x.toFixed(1)} ${y.toFixed(1)})">${tr.svg}</g>`]);}
+  for(const m of M.mobs){const [x,y]=P(m.x,m.z); if(x<-40||x>680||y<-20||y>460)continue; const s=mobSvg(m); if(!s)continue; const K=MOBS[m.kind];
+    let h=`<g transform="translate(${x.toFixed(1)} ${y.toFixed(1)})">${s}</g>`;
+    if(!m.dead&&(m.hp<K.hp||m===p.target))h+=bar(x-13,y-K.h-9,26,3.4,m.hp/K.hp,.85)+`<text x="${x.toFixed(1)}" y="${(y+14).toFixed(1)}" text-anchor="middle" font-size="9.5" ${TXT}>${K.th}</text>`;
+    D.push([m.z,h]);}
+  for(const a of M.actors){const f=a.f, [x,y]=P(a.x,a.z); if(x<-80||x>720||y<-40||y>500)continue;
+    let h=`<ellipse cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" rx="11" ry="3.6" fill="${INK}" opacity=".16"/>`+
+      `<g transform="translate(${x.toFixed(1)} ${y.toFixed(1)}) scale(${MP.S}) translate(0 ${-GROUND})">`+figureSvg({eq:f.eq,pose:f.disp,px:0,dir:f.dir,sw:f.sway,hand:f.autoHand,idx:f.i,trail:fxFor(f),noHit:true})+`</g>`;
+    const lu=clock-a.luT; if(lu<1.4)h+=swirlSvg(x,y-28,lu,Math.min(1,(1.4-lu)/.4),1.5+lu*.5);
+    h+=`<text x="${x.toFixed(1)}" y="${(y+15).toFixed(1)}" text-anchor="middle" font-size="10" font-weight="${a.bot?400:700}" ${TXT}>${a.name} Lv.${a.lv}</text>`;
+    if(!a.bot||a.hp<a.maxHp)h+=bar(x-16,y+19,32,3.2,a.hp/a.maxHp,.85)+(a.bot?'':bar(x-16,y+23.6,32,2.6,a.sp/a.maxSp,.4));
+    if(a.say&&clock-a.sayT<3.2){const w=a.say.length*6.4+14;
+      h+=`<rect x="${(x-w/2).toFixed(1)}" y="${(y-82).toFixed(1)}" width="${w.toFixed(1)}" height="17" rx="5" fill="${PAPER}" stroke="${INK}" stroke-width="1.2"/><text x="${x.toFixed(1)}" y="${(y-70).toFixed(1)}" text-anchor="middle" font-size="10" fill="${INK}">${a.say}</text>`;}
+    D.push([a.z+.5,h]);}
+  D.sort((a,b)=>a[0]-b[0]); out+=D.map(d=>d[1]).join('');
+  for(const q of M.shots){const [x,y]=P(q.x,q.z); out+=`<g transform="translate(${x.toFixed(1)} ${(y-q.h).toFixed(1)}) rotate(${q.ang.toFixed(1)}) scale(.8)">${shotArt(q.kind,q.c,clock-q.t)}</g>`;}
+  for(const s of sparks){const [x,y]=P(s.x,s.z); out+=sparkSvg([{x,y:y-s.h,t:s.t,c:s.c,k:0}],clock);}
+  for(const fl of M.floats){const k=(clock-fl.t)/1; if(k>1)continue; const [x,y]=P(fl.x,fl.z), big=fl.kind==='crit'||fl.kind==='lvl';
+    out+=`<text x="${x.toFixed(1)}" y="${(y-fl.h-34*k*(2-k)).toFixed(1)}" text-anchor="middle" font-size="${fl.kind==='lvl'?17:big?18:fl.kind==='info'?10.5:fl.kind==='hurt'?12:14}" font-weight="700" style="font-family:var(--display)" opacity="${Math.min(1,(1-k)*2.2).toFixed(2)}" ${TXT}>${fl.txt}</text>`;}
+  // HUD: status, exp, minimap
+  out+=`<rect x="8" y="8" width="150" height="46" rx="4" fill="${PAPER}" stroke="${INK}" stroke-width="1.4" opacity=".95"/><text x="16" y="23" font-size="11.5" font-weight="700" fill="${INK}">${p.name}  Lv.${p.lv}</text>`+
+    `<text x="16" y="36" font-size="8.5" fill="${INK}">HP</text>`+bar(34,29.5,84,6,p.hp/p.maxHp,.85)+`<text x="122" y="36" font-size="8.5" fill="${INK}">${Math.ceil(p.hp)}</text>`+
+    `<text x="16" y="47" font-size="8.5" fill="${INK}">SP</text>`+bar(34,40.5,84,6,p.sp/p.maxSp,.4)+`<text x="122" y="47" font-size="8.5" fill="${INK}">${Math.floor(p.sp)}</text>`+
+    bar(8,392,624,3.4,p.exp/(p.lv*40),.7)+`<text x="320" y="388" text-anchor="middle" font-size="8.5" ${TXT}>EXP ${Math.floor(p.exp)} / ${p.lv*40}</text>`;
+  const mx=536,my=8,mw=96,mh=64,kx=mw/MP.w,kz=mh/MP.d;
+  out+=`<rect x="${mx}" y="${my}" width="${mw}" height="${mh}" rx="3" fill="${PAPER}" stroke="${INK}" stroke-width="1.4" opacity=".95"/>`+
+    `<path d="M${PATH.map(([x,z])=>(mx+Math.max(0,Math.min(MP.w,x))*kx).toFixed(1)+','+(my+z*kz).toFixed(1)).join(' L')}" fill="none" stroke="${INK}" stroke-width="1.6" opacity=".3"/>`+
+    `<ellipse cx="${mx+POND.x*kx}" cy="${my+POND.z*kz}" rx="${POND.rx*kx}" ry="${POND.rz*kz}" fill="url(#h2)" opacity=".6"/>`;
+  for(const m of M.mobs)if(!m.dead)out+=`<circle cx="${(mx+m.x*kx).toFixed(1)}" cy="${(my+m.z*kz).toFixed(1)}" r="1.2" fill="${INK}" opacity=".45"/>`;
+  for(const a of M.actors)out+=a.bot?`<circle cx="${(mx+a.x*kx).toFixed(1)}" cy="${(my+a.z*kz).toFixed(1)}" r="2" fill="${PAPER}" stroke="${INK}" stroke-width="1"/>`:`<path d="M${(mx+a.x*kx).toFixed(1)},${(my+a.z*kz-3.5).toFixed(1)} l3,6 l-6,0Z" fill="${INK}"/>`;
+  out+=`<text x="${mx+mw/2}" y="${my+mh+11}" text-anchor="middle" font-size="9" ${TXT}>ทุ่งดินสอ</text>`;
+  M.md.innerHTML=out;
+}
+function mapFrame(dt){
+  const n=Math.max(1,Math.round(dt/.004)), h=dt/n; let live=0;
+  for(let i=0;i<n;i++){clock+=h; if(clock<stopUntil)continue; live+=h; for(const a of M.actors)stepFighter(a.f,h);}
+  if(live>0){
+    for(const a of M.actors)actorStep(a,live);
+    for(const m of M.mobs)mobStep(m,live);
+    const p=M.player;
+    if(!p.dead)for(const q of M.portals)if(Math.hypot(p.x-q.x,p.z-q.z)<22){p.x=q.to.x; p.z=q.to.z; p.dest=null; p.target=null; p.luT=clock; break;}
+  }
+  for(const a of M.actors){const f=a.f; f.trail=f.trail.filter(s=>clock-s.t<.15); for(const k in f.pts)f.pts[k]=f.pts[k].filter(s=>clock-s.t<.12);}
+  if(live>0)for(const q of M.shots)shotStep(q,live);
+  M.shots=M.shots.filter(q=>!q.done&&clock-q.t<1.1);
+  sparks=sparks.filter(d=>clock-d.t<.22); M.floats=M.floats.filter(d=>clock-d.t<1);
+  mapDraw();
+}
+addEventListener('keydown',e=>{
+  const t=e.target&&e.target.tagName; if(t==='INPUT'||t==='TEXTAREA'||t==='SELECT')return;
+  if(ui.mode==='studio'){studioKey(e); return;}
+  if(ui.mode==='map'&&(e.key==='x'||e.key==='X'||e.key==='Insert')){doEmote('sit'); kick(); return;}
+  if(ui.mode!=='map'||!/^[1-9]$/.test(e.key))return; useSkill(e.key); kick();
+});
+
+// ===== Pose Studio: build an attack from keyframes, then use it in the duel and on the map =====
+const STORE='sticky-world.moves.v1';
+const CUSTOM={}; // id -> {th, keys}
+const clonePose=p=>({x:p.x,y:p.y,a:Object.assign({},p.a)});
+const cloneKey=k=>({d:k.d,e:k.e,h:k.h,pose:clonePose(k.pose),hit:k.hit?Object.assign({},k.hit):null,thud:!!k.thud,shoot:k.shoot?JSON.parse(JSON.stringify(k.shoot)):null});
+function atkList(ty){return ATKSET[ty].concat(Object.keys(CUSTOM));}
+function hotbar(ty){return ATKSET[ty].slice(0,4).concat(Object.keys(CUSTOM)).slice(0,9);}
+function studioTrack(keys){
+  let t=0; const tr=keys.map(k=>{t+=k.d; return {t0:t-k.d,t1:t,e:k.e,p:k.pose,hit:k.hit||null,shoot:k.shoot||null,thud:!!k.thud,h:k.h||'relax'};});
+  tr.shift=0; return tr;
+}
+function registerMove(id){const c=CUSTOM[id]; TRACKS[id]=studioTrack(c.keys.map(cloneKey)); ATTACKS[id]={th:c.th}; SPCOST[id]=10; atkType=skType=null;}
+function saveStore(){try{localStorage.setItem(STORE,JSON.stringify(CUSTOM));}catch(e){}}
+try{const raw=JSON.parse(localStorage.getItem(STORE)||'{}');
+  for(const id in raw){const c=raw[id]; if(!c||!Array.isArray(c.keys)||!c.keys.length)continue;
+    CUSTOM[id]={th:String(c.th||'ท่าของฉัน').slice(0,24),keys:c.keys.map(k=>cloneKey({d:Math.max(.03,+k.d||.2),e:EASE[k.e]?k.e:'io',h:HANDART[k.h]?k.h:'relax',pose:mkPoseFrom(k.pose),hit:k.hit,thud:k.thud,shoot:k.shoot}))};
+    registerMove(id);}
+}catch(e){}
+function mkPoseFrom(p){const q=mkPose({}); if(p){q.x=+p.x||q.x; q.y=+p.y||q.y; for(const b of BONES)if(p.a&&isFinite(p.a[b.id]))q.a[b.id]=+p.a[b.id];} return q;}
+
+const S={keys:[],sel:0,t:0,playing:false,loop:true,speed:1,onion:true,editId:null,drag:null,scale:1,sig:'',mineSig:'',delArm:null};
+const keyT=i=>{let t=0; for(let j=0;j<=i;j++)t+=S.keys[j].d; return t;};
+const totalT=()=>keyT(S.keys.length-1);
+// a starter move in four beats: wind-up, strike, follow-through, recover
+function studioNew(){
+  S.keys=[
+    {d:.30,e:'io',h:'fist',pose:mkPose(P_WIND)},
+    {d:.09,e:'out',h:'open',pose:mkPose({dx:21,dy:9,a:A_STRIKE}),hit:{t:'high',push:18,dmg:10}},
+    {d:.20,e:'io',h:'open',pose:mkPose({dx:24,dy:10,a:A_SETTLE})},
+    {d:.40,e:'io',h:'relax',pose:mkPose({})},
+  ].map(cloneKey);
+  S.editId=null; $('stName').value=''; studioSelect(0);
+}
+function studioEnter(){ if(!S.keys.length)studioNew(); else studioSelect(Math.max(0,Math.min(S.sel,S.keys.length-1))); }
+function studioSelect(i){
+  const f=F[0]; S.sel=i; S.t=keyT(i); S.playing=false; S.delArm=null;
+  f.anim='none'; f.state='free'; f.pose=S.keys[i].pose; f.studioHand=S.keys[i].h; f.poseName=null;
+}
+function studioPreview(t){ // show the pose between keys without making a key
+  const f=F[0], tot=totalT(); S.t=Math.max(0,Math.min(tot,t)); S.playing=false;
+  const near=S.keys.findIndex((k,i)=>Math.abs(keyT(i)-S.t)<tot*.012);
+  if(near>=0){studioSelect(near); return;}
+  const r=evalTrack(studioTrack(S.keys),Math.min(S.t,tot-1e-4));
+  S.sel=-1; f.anim='none'; f.pose=clonePose(r.pose); f.studioHand=r.hand; f.poseName=null;
+}
+function studioInsertAt(t,pose,hand){
+  let i=0; while(i<S.keys.length&&keyT(i)<=t)i++;
+  if(i>=S.keys.length){S.keys.push({d:Math.max(.1,t-totalT()),e:'io',h:hand||'relax',pose,hit:null,thud:false,shoot:null}); i=S.keys.length-1;}
+  else{const t0=i?keyT(i-1):0, k=S.keys[i], d0=Math.max(.03,t-t0); k.d=Math.max(.03,k.d-d0);
+    S.keys.splice(i,0,{d:d0,e:k.e,h:hand||k.h,pose,hit:null,thud:false,shoot:null});}
+  studioSelect(i);
+}
+function studioBind(){ // a bone is being edited: make sure it belongs to a key
+  const f=F[0];
+  if(f.anim!=='none'){const tot=totalT(); S.t=f.loop?f.animT%tot:Math.min(f.animT,tot); f.pose=clonePose(f.disp); f.anim='none'; S.playing=false; S.sel=-1;}
+  if(S.sel<0)studioInsertAt(S.t,clonePose(f.pose),f.studioHand||f.autoHand);
+  f.pose=S.keys[S.sel].pose; f.studioHand=S.keys[S.sel].h;
+}
+function studioPlay(){
+  const f=F[0];
+  if(S.playing){f.anim='none'; studioSelect(S.sel>=0?S.sel:0); return;}
+  TRACKS.__studio=studioTrack(S.keys); play(f,'__studio',S.loop); f.rate=S.speed; f.state='free'; f.studioHand=null; S.playing=true;
+}
+function studioStopped(){ studioSelect(S.sel>=0?S.sel:S.keys.length-1); }
+function studioKey(e){
+  if(e.key===' '){e.preventDefault(); studioPlay(); kick();}
+  else if(e.key==='ArrowRight'||e.key==='ArrowLeft'){e.preventDefault(); const n=S.keys.length, d=e.key==='ArrowRight'?1:-1;
+    studioSelect(S.sel<0?(d>0?S.keys.findIndex((k,i)=>keyT(i)>S.t):n-1):Math.max(0,Math.min(n-1,S.sel+d))); kick();}
+}
+function studioGhost(){
+  if(ui.mode!=='studio'||!S.onion||S.playing||S.sel<0)return '';
+  const f=F[0], g=S.sel?S.keys[S.sel-1]:null;
+  return `<g opacity=".2">`+figureSvg({eq:f.eq,pose:g?g.pose:REST,px:f.px,dir:f.dir,sw:0,hand:g?g.h:'relax',idx:0,noHit:true})+`</g>`;
+}
+const fromTrack=tr=>tr.map(k=>cloneKey({d:+(k.t1-k.t0).toFixed(3),e:k.e,h:k.h,pose:k.p,hit:k.hit,thud:k.thud,shoot:k.shoot}));
+
+// ---- controls ----
+const tl=$('tl');
+const tlX=e=>{const r=tl.getBoundingClientRect(); return Math.max(0,Math.min(1,(e.clientX-r.left-16)/(r.width-32)))*S.scale;};
+tl.addEventListener('pointerdown',e=>{
+  e.preventDefault(); tl.setPointerCapture(e.pointerId);
+  const i=e.target.dataset&&e.target.dataset.i;
+  if(i!==undefined){studioSelect(+i); S.drag={i:+i,moved:false};} else{S.drag={scrub:true}; studioPreview(tlX(e));}
+  kick();
+});
+tl.addEventListener('pointermove',e=>{
+  if(!S.drag)return; const t=tlX(e);
+  if(S.drag.scrub){studioPreview(t); kick(); return;}
+  // dragging a key retimes it; the keys after it stay where they are
+  const i=S.drag.i, k=S.keys[i], t0=i?keyT(i-1):0, next=S.keys[i+1], tEnd=next?keyT(i+1):Infinity;
+  const nt=Math.max(t0+.03,Math.min(tEnd-.03,t)), nd=+(nt-t0).toFixed(3);
+  if(next)next.d=+(next.d-(nd-k.d)).toFixed(3);
+  k.d=nd; S.t=nt; S.drag.moved=true; kick();
+});
+const tlEnd=()=>{S.drag=null; S.scale=0; kick();};
+tl.addEventListener('pointerup',tlEnd); tl.addEventListener('pointercancel',tlEnd);
+$('stPlay').addEventListener('click',()=>{studioPlay(); kick();});
+$('stLoop').addEventListener('click',()=>{S.loop=!S.loop; if(S.playing)F[0].loop=S.loop; kick();});
+$('stOnion').addEventListener('click',()=>{S.onion=!S.onion; kick();});
+chips($('stSpeed'),{x25:{th:'0.25×'},x50:{th:'0.5×'},x100:{th:'1×'}},()=>'x'+Math.round(S.speed*100),k=>{S.speed=+k.slice(1)/100; if(F[0].anim==='__studio')F[0].rate=S.speed;});
+const selKey=()=>S.sel>=0?S.keys[S.sel]:null;
+chips($('stEase'),{lin:{th:'เส้นตรง'},io:{th:'นุ่ม เข้า-ออก'},out:{th:'ระเบิด'}},()=>selKey()&&selKey().e,k=>{const q=selKey(); if(q)q.e=k;});
+const EICO={lin:'M2,10 L16,2',io:'M2,10 C9,10 9,2 16,2',out:'M2,10 C3,3 6,2 16,2'};
+for(const b of $('stEase').querySelectorAll('button'))b.insertAdjacentHTML('afterbegin',`<svg class="ease-ico" viewBox="0 0 18 12" aria-hidden="true"><path d="${EICO[b.dataset.k]}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>`);
+const SHANDS=Object.fromEntries(['relax','open','fist','point','chop','claw','peace'].map(k=>[k,HANDS[k]]));
+chips($('stHand'),SHANDS,()=>selKey()&&selKey().h,k=>{const q=selKey(); if(q){q.h=k; F[0].studioHand=k;}});
+const HITS={none:{th:'ไม่มี'},high:{th:'โดนบน'},low:{th:'โดนท้อง'},launch:{th:'ลอยล้ม'}};
+chips($('stHit'),HITS,()=>{const q=selKey(); return q?(q.hit?q.hit.t:'none'):null;},k=>{const q=selKey(); if(!q)return;
+  q.hit=k==='none'?null:{t:k,push:{high:16,low:22,launch:26}[k],dmg:{high:9,low:9,launch:13}[k]};});
+$('stThud').addEventListener('click',()=>{const q=selKey(); if(q)q.thud=!q.thud; kick();});
+$('stDur').addEventListener('input',e=>{const q=selKey(), v=+e.target.value; if(q&&isFinite(v)&&v>0){q.d=Math.max(.03,Math.min(3,v)); S.t=keyT(S.sel); S.scale=0; kick();}});
+$('stAdd').addEventListener('click',()=>{
+  const f=F[0]; if(S.playing)studioBind();
+  if(S.sel>=0){const k=S.keys[S.sel]; S.keys.splice(S.sel+1,0,{d:.2,e:'io',h:k.h,pose:clonePose(k.pose),hit:null,thud:false,shoot:null}); studioSelect(S.sel+1);}
+  else studioInsertAt(S.t,clonePose(f.pose),f.studioHand);
+  S.scale=0; kick();
+});
+$('stDel').addEventListener('click',()=>{
+  if(S.keys.length<2||S.sel<0)return; const k=S.keys[S.sel], nx=S.keys[S.sel+1];
+  if(nx)nx.d+=k.d; // later keys keep their time
+  S.keys.splice(S.sel,1); studioSelect(Math.min(S.sel,S.keys.length-1)); S.scale=0; kick();
+});
+$('stNew').addEventListener('click',()=>{studioNew(); msg(''); S.scale=0; kick();});
+const from=$('stFrom');
+from.innerHTML='<option value="">แก้จากท่าที่มี…</option>'+Object.entries(ATTACKS).map(([k,v])=>`<option value="${k}">${v.th}</option>`).join('')+
+  Object.entries(REACTS).map(([k,v])=>`<option value="${k}">${v.th}</option>`).join('');
+from.addEventListener('change',()=>{const k=from.value; if(!k||!TRACKS[k])return;
+  S.keys=fromTrack(TRACKS[k]); S.editId=null; $('stName').value=((ATTACKS[k]||REACTS[k]).th+' ของฉัน').slice(0,24);
+  from.value=''; studioSelect(0); S.scale=0; msg('โหลดท่า "'+(ATTACKS[k]||REACTS[k]).th+'" มาแก้แล้ว บันทึกจะได้เป็นท่าใหม่ ท่าเดิมไม่เปลี่ยน'); kick();});
+let msgT=0; function msg(t){$('stMsg').textContent=t;}
+$('stSave').addEventListener('click',()=>{
+  const name=($('stName').value.trim()||'ท่าของฉัน').slice(0,24), id=S.editId||('c'+Date.now().toString(36));
+  CUSTOM[id]={th:name,keys:S.keys.map(cloneKey)}; registerMove(id); S.editId=id; $('stName').value=name; saveStore();
+  const n=hotbar(wtype(F[0].eq)).indexOf(id)+1, hits=S.keys.filter(k=>k.hit).length;
+  msg(`บันทึก "${name}" แล้ว ใช้ได้ในแถวคอมโบ, โหมดต่อสู้ 2 ตัว`+(n?` และในแมพ RPG กดเลข ${n}`:'')+(hits?'':' · ยังไม่มีคีย์ที่ตั้งจังหวะโดน ท่านี้จะยังไม่ทำดาเมจ'));
+  kick();
+});
+function mineChips(){
+  const host=$('stMine'), sig=JSON.stringify([Object.keys(CUSTOM).map(k=>CUSTOM[k].th),S.editId,S.delArm]); if(sig===S.mineSig)return; S.mineSig=sig;
+  host.querySelectorAll('.mine,.hint').forEach(b=>b.remove());
+  const ids=Object.keys(CUSTOM);
+  if(!ids.length){host.insertAdjacentHTML('beforeend','<span class="hint">ยังไม่มี กดบันทึกแล้วท่าจะมาอยู่ตรงนี้</span>'); return;}
+  for(const id of ids){
+    const w=document.createElement('span'); w.className='mine'+(id===S.editId?' on':'');
+    const a=document.createElement('button'); a.textContent=CUSTOM[id].th; a.title='เปิดมาแก้';
+    a.addEventListener('click',()=>{S.keys=CUSTOM[id].keys.map(cloneKey); S.editId=id; $('stName').value=CUSTOM[id].th; studioSelect(0); S.scale=0; msg(''); kick();});
+    const x=document.createElement('button'); x.textContent=S.delArm===id?'ลบ?':'×'; x.setAttribute('aria-label','ลบท่า '+CUSTOM[id].th);
+    x.addEventListener('click',()=>{ if(S.delArm!==id){S.delArm=id; kick(); return;}
+      delete CUSTOM[id]; delete TRACKS[id]; delete ATTACKS[id]; atkType=skType=null; if(S.editId===id)S.editId=null; S.delArm=null; saveStore(); kick();});
+    w.append(a,x); host.appendChild(w);
+  }
+}
+function studioPanel(){
+  const f=F[0], n=S.keys.length, tot=totalT();
+  if(S.playing&&f.anim==='__studio')S.t=f.loop?f.animT%tot:Math.min(f.animT,tot);
+  if(!S.drag&&!S.scale)S.scale=Math.max(1,Math.ceil((tot+.2)*4)/4);
+  const X=t=>`calc(16px + (100% - 32px) * ${(t/S.scale).toFixed(4)})`;
+  const sig=JSON.stringify([S.keys.map(k=>[k.d,k.e,k.hit&&k.hit.t]),S.sel,S.scale]);
+  if(sig!==S.sig){S.sig=sig;
+    let h='<div class="tl-axis"></div>';
+    const step=S.scale>2?.5:.25; for(let t=0;t<=S.scale+1e-6;t+=step)h+=`<span class="tl-tick" style="left:${X(t)}">${t.toFixed(2)}</span>`;
+    h+=`<span class="tl-start" style="left:${X(0)}" title="ท่ายืนเริ่มต้น"></span>`;
+    let t0=0; S.keys.forEach((k,i)=>{const t1=t0+k.d;
+      h+=`<span class="tl-seg ${k.e}" style="left:${X(t0)};width:calc((100% - 32px) * ${(k.d/S.scale).toFixed(4)})"></span>`; t0=t1;});
+    S.keys.forEach((k,i)=>{const t=keyT(i);
+      h+=`<button class="tl-key${k.hit?' hit':''}" data-i="${i}" aria-pressed="${i===S.sel}" style="left:${X(t)}" title="คีย์ ${i+1}${k.hit?' · จังหวะโดน':''}" aria-label="คีย์ ${i+1}"></button><span class="tl-num" style="left:${X(t)}">${i+1}</span>`;});
+    h+='<div class="tl-head" id="tlHead"></div>';
+    tl.innerHTML=h;
+  }
+  $('tlHead').style.left=X(S.t);
+  $('stTime').textContent=`${S.t.toFixed(2)} / ${tot.toFixed(2)} วิ`;
+  $('stPlay').textContent=S.playing?'■ หยุด':'▶ เล่น';
+  $('stLoop').setAttribute('aria-pressed',String(S.loop)); $('stOnion').setAttribute('aria-pressed',String(S.onion));
+  const q=selKey();
+  $('stKeyRow').hidden=$('stHandRow').hidden=$('stHitRow').hidden=!q||S.playing;
+  $('stDel').disabled=!q||n<2;
+  $('stKeyLbl').textContent=S.playing?'กำลังเล่น… กดหยุดเพื่อแก้คีย์':q?`คีย์ ${S.sel+1} จาก ${n} · ถึงท่านี้ที่ ${keyT(S.sel).toFixed(2)} วิ · ลากแขน ขา หัว ลำตัวบนภาพเพื่อปรับท่า`
+    :'กำลังดูท่าระหว่างคีย์ ลากกระดูกบนภาพเพื่อเพิ่มคีย์ตรงนี้';
+  if(q){ if(document.activeElement!==$('stDur'))$('stDur').value=q.d.toFixed(2); $('stThud').setAttribute('aria-pressed',String(!!q.thud)); }
+  mineChips();
+  const j=JSON.stringify({name:$('stName').value.trim()||'ท่าของฉัน',duration:+tot.toFixed(3),keys:S.keys.map((k,i)=>({at:+keyT(i).toFixed(3),ease:k.e,hand:k.h,hit:k.hit||undefined,thud:k.thud||undefined,
+    dx:Math.round(k.pose.x-HOME.x),dy:Math.round(k.pose.y-HOME.y),angles:Object.fromEntries(BONES.map(b=>[b.id,Math.round(norm(k.pose.a[b.id]))]))}))},null,1);
+  if(j!==lastJson){lastJson=j; $('json').value=j;}
+}
+
+draw(); panel();
+</script>
+</body>
+</html>

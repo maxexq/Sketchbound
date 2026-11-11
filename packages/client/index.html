@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sticky World</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Mali:wght@500;700&family=IBM+Plex+Sans+Thai:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#f4f3ef;--ink:#1b1b1d;--muted:#6b6b70;--display:"Mali","IBM Plex Sans Thai",sans-serif;--body:"IBM Plex Sans Thai",system-ui,sans-serif}
+  *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body)}
+  main{max-width:980px;margin:0 auto;padding:16px}
+  h1{font-family:var(--display);font-size:24px;margin:0 0 4px}
+  p.sub{margin:0 0 12px;color:var(--muted);font-size:14px}
+  #svg{display:block;width:100%;aspect-ratio:640/400;background:#ededee;border:1.5px solid var(--ink);border-radius:6px;touch-action:none;user-select:none}
+  #svg text{font-family:var(--body)} #svg .disp{font-family:var(--display)}
+  .bar{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;align-items:center}
+  button{font:inherit;padding:6px 12px;border:1.5px solid var(--ink);border-radius:999px;background:#fff;cursor:pointer}
+  #status{color:var(--muted);font-size:13px;margin-left:auto}
+  #join{display:flex;gap:8px;margin-bottom:12px} #join input,#join select{font:inherit;padding:6px 10px;border:1.5px solid var(--ink);border-radius:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Sticky World · ทุ่งดินสอ</h1>
+  <p class="sub">คลิกพื้นเพื่อเดิน คลิกมอนเพื่อตี กด 1–4 ใช้สกิล · เปิดอีกแท็บเพื่อเล่นสองคน</p>
+  <form id="join">
+    <input id="name" placeholder="ชื่อตัวละคร" maxlength="16" required>
+    <select id="preset"></select>
+    <button>เข้าเกม</button>
+  </form>
+  <svg id="svg" viewBox="0 0 640 400"></svg>
+  <div class="bar" id="hotbar"><span id="status">ยังไม่ได้เชื่อมต่อ</span></div>
+</main>
+<script type="module" src="/src/main.ts"></script>
+</body>
+</html>

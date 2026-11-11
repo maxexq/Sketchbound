@@ -1,0 +1,8 @@
+{
+  "name": "@sticky/server",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": { "dev": "tsx watch src/main.ts", "start": "tsx src/main.ts" },
+  "dependencies": { "@sticky/shared": "0.0.1", "ws": "^8.18.0" }
+}

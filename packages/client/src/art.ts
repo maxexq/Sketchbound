@@ -1,6 +1,6 @@
 // @ts-nocheck
 // Pencil art, ported from the prototype (tools/prototype.html). Strings of SVG, drawn by render.ts.
-import { rig } from '@sticky/shared';
+import { rig } from '@sketchbound/shared';
 const { BONES, BMAP, ORDER, HOME, GROUND, GEAR, INK, PAPER, solve, norm, ELEMENTS, REACH, MUZ, WTYPE, wtype, POSES } = rig;
 const SK=`stroke="${INK}" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"`;
 const LN=`fill="none" stroke="${INK}" stroke-width="1.1" stroke-linecap="round"`;

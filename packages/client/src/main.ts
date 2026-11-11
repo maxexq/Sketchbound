@@ -1,5 +1,5 @@
 // Client: connects, sends intent, and draws server snapshots ~100 ms in the past so movement is smooth.
-import { buildLayout, MAPS, PRESETS, SKILLS, hotbar, type ServerMsg, type ClientMsg, type PlayerView, type MobView, type ShotView, rig } from '@sticky/shared';
+import { buildLayout, MAPS, PRESETS, SKILLS, hotbar, type ServerMsg, type ClientMsg, type PlayerView, type MobView, type ShotView, rig } from '@sketchbound/shared';
 import { DEFS_SVG, drawFrame, groundSvg, treeSvgs, newBody, stepBody, VIEW, ZK, type Body, type Float, type Spark } from './render';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;

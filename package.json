@@ -1,14 +1,14 @@
 {
-  "name": "sticky-world",
+  "name": "sketchbound",
   "private": true,
   "type": "module",
   "workspaces": ["packages/*"],
   "scripts": {
-    "dev": "npm run dev -w @sticky/server & npm run dev -w @sticky/client",
-    "dev:server": "npm run dev -w @sticky/server",
-    "dev:client": "npm run dev -w @sticky/client",
-    "build": "npm run build -w @sticky/client",
-    "start": "npm run start -w @sticky/server",
+    "dev": "npm run dev -w @sketchbound/server & npm run dev -w @sketchbound/client",
+    "dev:server": "npm run dev -w @sketchbound/server",
+    "dev:client": "npm run dev -w @sketchbound/client",
+    "build": "npm run build -w @sketchbound/client",
+    "start": "npm run start -w @sketchbound/server",
     "test": "vitest run",
     "typecheck": "tsc -p packages/shared && tsc -p packages/server && tsc -p packages/client"
   },

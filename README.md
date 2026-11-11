@@ -1,6 +1,6 @@
-# Sticky World
+# Sketchbound
 
-MMO RPG ตัวละครเส้นดินสอ ในโลกของภาพวาด · A pencil-stickman MMO RPG set in a world of drawings.
+Sketchbound: MMO RPG ตัวละครเส้นดินสอ ในโลกของภาพวาด · A pencil-stickman MMO RPG set in a world of drawings.
 
 This is **Phase 0** of the plan: the single-file prototype split into a real project so the game logic can run on a server.
 

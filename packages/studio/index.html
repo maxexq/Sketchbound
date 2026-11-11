@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pose Studio · Sketchbound</title>
+<meta name="description" content="Rig animator for Sketchbound: pose the pencil stickman, key animation clips and save them straight into the game.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23f5c542'/%3E%3Cpath d='M16 6v10M16 16l-6 9M16 16l6 9M9 12l7-2 7 2' stroke='%231b1b1d' stroke-width='2.6' stroke-linecap='round' fill='none'/%3E%3Ccircle cx='16' cy='6' r='3.6' fill='%231b1b1d'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Mali:wght@600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./src/style.css">
+</head>
+<body>
+<div id="app">
+  <header class="top">
+    <div class="brand"><span class="logo" aria-hidden="true"></span><div><b>Pose Studio</b><small>SKETCHBOUND · RIG ANIMATOR</small></div></div>
+    <div class="cliptitle"><span id="clipName">—</span><span id="clipKind" class="badge"></span><span id="dirtyDot" class="dirtydot" title="ยังไม่ได้บันทึกลงเกม" hidden></span></div>
+    <div class="spacer"></div>
+    <button id="syncBtn" class="sync" title="ตั้งค่าการเชื่อมต่อกับเกม"><i></i><span id="syncText">กำลังเชื่อมต่อ…</span></button>
+    <button class="ghost" id="btnKeys">คีย์ลัด</button>
+    <button class="ghost" id="btnImport">Import</button>
+    <button class="ghost" id="btnExport">Export</button>
+    <button class="ghost" id="btnPreview">ดูผลในเกม</button>
+    <button class="primary" id="btnSave">บันทึกลงเกม</button>
+  </header>
+
+  <aside class="left" id="left"></aside>
+
+  <section class="stagewrap">
+    <div class="toolbar" id="toolbar"></div>
+    <svg id="stage" tabindex="0" aria-label="เวทีจัดท่า: ลากจุดสีเพื่อหมุนกระดูก"></svg>
+    <div class="stagehint" id="stageHint"></div>
+    <div class="histpanel" id="hist" hidden><div class="hh"><b>History</b><small id="histCount"></small></div><div class="hlist" id="histList"></div><small class="hfoot">เก็บไว้แม้รีเฟรช · คลิกขั้นไหนก็ย้อนไปได้</small></div>
+    <div class="legend"><span><i style="background:var(--onion-prev)"></i>ก่อนหน้า</span><span><i style="background:var(--onion-next)"></i>ถัดไป</span><span><i style="background:var(--accent)"></i>เลือกอยู่</span></div>
+  </section>
+
+  <aside class="right" id="right"></aside>
+
+  <section class="timeline" id="timeline">
+    <div class="tl-resize" id="tlResize" title="ลากเพื่อปรับความสูง"></div>
+    <div class="tl-bar" id="tlBar"></div>
+    <div class="tl-body"><canvas id="tl"></canvas></div>
+  </section>
+</div>
+<div id="modal" class="modal" hidden></div>
+<div id="menu" class="menu" hidden></div>
+<div id="toasts" class="toasts" aria-live="polite"></div>
+<input type="file" id="file" accept=".json,application/json" hidden multiple>
+<script type="module" src="./src/main.ts"></script>
+</body>
+</html>

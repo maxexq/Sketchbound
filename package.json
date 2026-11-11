@@ -2,7 +2,9 @@
   "name": "sketchbound",
   "private": true,
   "type": "module",
-  "workspaces": ["packages/*"],
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
     "dev": "npm run dev -w @sketchbound/server & npm run dev -w @sketchbound/client",
     "dev:server": "npm run dev -w @sketchbound/server",
@@ -10,7 +12,11 @@
     "build": "npm run build -w @sketchbound/client",
     "start": "npm run start -w @sketchbound/server",
     "test": "vitest run",
-    "typecheck": "tsc -p packages/shared && tsc -p packages/server && tsc -p packages/client"
+    "typecheck": "tsc -p packages/shared && tsc -p packages/server && tsc -p packages/client && tsc -p packages/studio && tsc -p packages/studio-server",
+    "studio": "npm run dev -w @sketchbound/studio",
+    "studio:sync": "npm run dev -w @sketchbound/studio-server",
+    "studio:mcp": "npm run mcp -w @sketchbound/studio-server --silent",
+    "build:studio": "npm run build -w @sketchbound/studio && npm run build -w @sketchbound/studio-server"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
@@ -18,6 +24,7 @@
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
     "vite": "^6.0.5",
-    "vitest": "^2.1.8"
+    "vitest": "^2.1.8",
+    "esbuild": "^0.24.0"
   }
 }

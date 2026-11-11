@@ -3,6 +3,14 @@
   "version": "0.0.1",
   "private": true,
   "type": "module",
-  "scripts": { "dev": "vite", "build": "vite build" },
-  "dependencies": { "@sketchbound/shared": "0.0.1" }
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build"
+  },
+  "dependencies": {
+    "@sketchbound/shared": "0.0.1"
+  },
+  "exports": {
+    "./art": "./src/art.ts"
+  }
 }

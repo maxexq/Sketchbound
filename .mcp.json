@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "sketchbound": {
+      "command": "npx",
+      "args": ["tsx", "packages/studio-server/src/mcp.ts"]
+    }
+  }
+}

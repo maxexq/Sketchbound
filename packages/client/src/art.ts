@@ -148,13 +148,48 @@ function baseArt(id,eq,auto){
   }
 }
 const T=(w,inner)=>`<g transform="translate(${w.x.toFixed(2)} ${w.y.toFixed(2)}) rotate(${w.r.toFixed(2)})">${inner}</g>`;
+// ---- marker body: one even line weight, smooth edges, solid head, no eyes ----
+// eq.body==='marker' (the default in presets.json) draws the figure this way; eq.body==='pencil' keeps the first look.
+// Each limb is ONE stroke through its joints, curved so elbows and knees never show a corner, and both legs start at
+// the hip pivot and both arms at one shoulder point, so limbs and torso overlap in a single spot.
+// Only the drawing changes: bones, lengths and pivots are the rig's, so every pose and clip plays as before.
+const MARKER={w:5, head:15.5, hand:6, curve:1/6};
+const MCHAIN={armL_u:['armL_u','armL_l'],armR_u:['armR_u','armR_l'],legL_u:['legL_u','legL_l'],legR_u:['legR_u','legR_l']};
+const mEnd=(W,b,extra)=>{const w=W[b],r=w.r*Math.PI/180,l=BMAP[b].len+(extra||0);return {x:w.x+Math.cos(r)*l,y:w.y+Math.sin(r)*l};};
+const mf=v=>v.toFixed(1);
+function markerLimb(id,W){
+  const ch=MCHAIN[id], arm=id[0]==='a';
+  // the forearm runs a little past the wrist as a straight rounded hand; the weapon still sits on the hand bone
+  const pts=[arm?{x:(W.armL_u.x+W.armR_u.x)/2,y:(W.armL_u.y+W.armR_u.y)/2}:W.root, W[ch[1]], mEnd(W,ch[1],arm?MARKER.hand:0)];
+  let d=`M${mf(pts[0].x)},${mf(pts[0].y)}`;
+  for(let i=0;i<pts.length-1;i++){ // Catmull-Rom through the joints, written as cubic Béziers
+    const p0=pts[Math.max(0,i-1)],p1=pts[i],p2=pts[i+1],p3=pts[Math.min(pts.length-1,i+2)],t=MARKER.curve;
+    d+=` C${mf(p1.x+(p2.x-p0.x)*t)},${mf(p1.y+(p2.y-p0.y)*t)} ${mf(p2.x-(p3.x-p1.x)*t)},${mf(p2.y-(p3.y-p1.y)*t)} ${mf(p2.x)},${mf(p2.y)}`;
+  }
+  return `<path d="${d}" fill="none" stroke="${INK}" stroke-width="${MARKER.w}" stroke-linecap="round" stroke-linejoin="round"/>`;
+}
+function markerBase(id,W){
+  if(MCHAIN[id])return markerLimb(id,W);
+  if(id==='spine'){const a=W.spine,b=mEnd(W,'spine');return `<path d="M${mf(a.x)},${mf(a.y)} L${mf(b.x)},${mf(b.y)}" fill="none" stroke="${INK}" stroke-width="${MARKER.w}" stroke-linecap="round"/>`;}
+  // the head bone starts 12px below the shoulder line; the head sits right on top of the spine
+  if(id==='head')return T(W.head,`<circle cx="${12+MARKER.head-MARKER.w/2}" cy="0" r="${MARKER.head}" fill="${INK}"/>`);
+  return '';
+}
+// hats and hair are authored for the first head (centre 31.5px up the bone, radius 21): scale them onto the marker head
+const MHEAD=`translate(${12+MARKER.head-MARKER.w/2} 0) scale(${(MARKER.head/21).toFixed(3)}) translate(-31.5 0)`;
 function rigSvg(eq,W,sw,auto){
   const P=pieces(eq,sw), by=(b,l)=>P.filter(p=>p.bone===b&&p.layer===l).map(p=>p.svg).join('');
+  const marker=eq.body==='marker';
   let out='';
   // art is drawn at its authored length, then fitted to the bone
-  const fit=(id,x)=>{const b=BMAP[id];return b.art?`<g transform="scale(${(b.len/b.art).toFixed(3)} ${b.sy||1})">${x}</g>`:x;};
+  const fit=(id,x)=>{const b=BMAP[id]; if(!x)return ''; const f=b.art?`<g transform="scale(${(b.len/b.art).toFixed(3)} ${b.sy||1})">${x}</g>`:x;
+    return marker&&id==='head'?`<g transform="${MHEAD}">${f}</g>`:f;};
   for(const id of ORDER){const s=by(id,'back'); if(s)out+=T(W[id],fit(id,s));}
-  for(const id of ORDER)out+=T(W[id],fit(id,by(id,'under')+baseArt(id,eq,auto)+by(id,'over')));
+  for(const id of ORDER){
+    if(!marker){out+=T(W[id],fit(id,by(id,'under')+baseArt(id,eq,auto)+by(id,'over')));continue;}
+    const u=by(id,'under'), o=by(id,'over');
+    out+=(u?T(W[id],fit(id,u)):'')+markerBase(id,W)+(o?T(W[id],fit(id,o)):'');
+  }
   return out;
 }
 // ---- pencil motion effects ----
@@ -272,12 +307,14 @@ function hudSvg(v,hp,sel){
 // one fighter: F = {eq,pose,px,dir,sw,hand,trail,showBones,sel,idx}
 function figureSvg(F){
   const pose=F.pose, W=solve(pose), rig=rigSvg(F.eq,W,F.sw||0,F.hand);
-  const lines=rig.replace(/fill="[^"]*"/g,'fill="none"');
   const px=pose.x.toFixed(2), py=pose.y.toFixed(2);
   // the filter is anchored to the hips so the pencil wobble travels with the figure instead of boiling
   const anchored=(f,o,x)=>`<g transform="translate(${px} ${py})"><g filter="url(#${f})" opacity="${o}"><g transform="translate(${-px} ${-py})">${x}</g></g></g>`;
-  return `<g transform="translate(${F.px.toFixed(2)} 0) scale(${F.dir} 1) translate(${-HOME.x} 0)">`+
-    anchored('wA',1,groundMarks(W)+(F.trail||'')+rig)+anchored('pc',.8,lines)+
+  // the marker body keeps its edges clean: no wobble or pencil-grain pass over the figure, only over the floor marks and trail
+  const body=F.eq.body==='marker'
+    ? anchored('wA',1,groundMarks(W)+(F.trail||''))+rig
+    : anchored('wA',1,groundMarks(W)+(F.trail||'')+rig)+anchored('pc',.8,rig.replace(/fill="[^"]*"/g,'fill="none"'));
+  return `<g transform="translate(${F.px.toFixed(2)} 0) scale(${F.dir} 1) translate(${-HOME.x} 0)">`+body+
     (F.showBones?overlaySvg(W,F.sel,'#1f6feb',F.eq):'')+(F.noHit?'':hitSvg(W,F.eq,F.idx))+`</g>`;
 }
 function sceneSvg(S){

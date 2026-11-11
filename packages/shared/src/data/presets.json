@@ -1,5 +1,5 @@
 {
-  "base": {"hair":"none","outfit":"none","wings":"none","weapon":"none","offhand":"none","element":"mono","handR":"auto","handL":"auto","head":"solid","eyes":"on"},
+  "base": {"hair":"none","outfit":"none","wings":"none","weapon":"none","offhand":"none","element":"mono","handR":"auto","handL":"auto","head":"solid","eyes":"on","body":"marker"},
   "presets": {
     "knight": {"th":"อัศวิน","eq":{"hair":"spiky","outfit":"armor","weapon":"spear","offhand":"shield"}},
     "samurai": {"th":"ซามูไร","eq":{"hair":"pony","outfit":"ninja","weapon":"katana","offhand":"dagger"}},

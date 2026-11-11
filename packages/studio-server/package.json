@@ -1,0 +1,21 @@
+{
+  "name": "@sketchbound/studio-server",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "Pose Studio sync server (save to game) and MCP server for AI agents. Node built-ins only.",
+  "bin": {
+    "sketchbound-mcp": "dist/mcp.js",
+    "sketchbound-sync": "dist/sync.js"
+  },
+  "scripts": {
+    "dev": "tsx watch src/sync.ts",
+    "mcp": "tsx src/mcp.ts",
+    "build": "node build.mjs",
+    "start": "node dist/sync.js"
+  },
+  "dependencies": {
+    "@sketchbound/shared": "0.0.1",
+    "@sketchbound/client": "0.0.1"
+  }
+}

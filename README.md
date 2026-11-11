@@ -10,6 +10,8 @@ packages/
     src/data/   game data as JSON: skills.json, mobs.json, presets.json, maps/pencil-field.json
   server/   Node WebSocket server: one zone, 20 ticks/s, full snapshots
   client/   Vite page that draws the zone in the prototype's pencil SVG style
+  studio/   Pose Studio: standalone rig animator, deployed apart from the game (see packages/studio/README.md)
+  studio-server/  sync server for "save to game" + MCP server so AI agents can make poses and clips
 tools/prototype.html   the original single-file prototype, kept as reference
 ```
 
@@ -19,7 +21,9 @@ tools/prototype.html   the original single-file prototype, kept as reference
 npm install
 npm run dev:server     # ws://localhost:8787
 npm run dev:client     # http://localhost:5173  (open two tabs to play together)
-npm test               # sim tests
+npm run studio         # Pose Studio on http://localhost:5174
+npm run studio:sync    # lets the studio (and MCP edits) save straight into the game
+npm test               # sim + clip tests
 npm run typecheck
 ```
 

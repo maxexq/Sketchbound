@@ -1,0 +1,9 @@
+{
+  "name": "@sketchbound/studio",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "Pose Studio: standalone rig animator for Sketchbound. Static site, deployed apart from the game.",
+  "scripts": { "dev": "vite", "build": "vite build", "preview": "vite preview" },
+  "dependencies": { "@sketchbound/shared": "0.0.1", "@sketchbound/client": "0.0.1" }
+}
